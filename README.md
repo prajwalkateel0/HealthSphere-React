@@ -1,12 +1,14 @@
 # HealthSphere — React + Node.js
 
-A full-stack healthcare management platform with 4 portals and 36 pages.
+A full-stack healthcare management platform with 4 portals and 37 pages.
+
+🌐 **Live demo:** https://health-sphere-react.vercel.app
 
 ## Tech Stack
 
 **Frontend:** React 19 + Vite + React Router v6 + Chart.js + Socket.io-client + Leaflet  
-**Backend:** Node.js + Express.js + MySQL2 + JWT + Socket.io  
-**Database:** MySQL 8
+**Backend:** Node.js + Express.js + Prisma ORM + JWT + Socket.io  
+**Database:** PostgreSQL
 
 ## Project Structure
 
@@ -18,7 +20,7 @@ healthsphere/
 │   │   ├── controllers/  # Business logic
 │   │   ├── middleware/   # Auth middleware
 │   │   └── routes/   # API routes
-│   ├── schema.sql    # Database schema + seed data
+│   ├── prisma/       # Prisma schema + migrations
 │   ├── .env.example  # Environment template
 │   └── package.json
 │
@@ -28,7 +30,7 @@ healthsphere/
     │   ├── assets/   # CSS design system
     │   ├── components/  # Shared components (Sidebar, Layout)
     │   ├── context/  # Auth context
-    │   └── pages/    # 36 pages across 4 portals
+    │   └── pages/    # 37 pages across 4 portals
     └── package.json
 ```
 
@@ -37,15 +39,17 @@ healthsphere/
 ### 1. Database
 
 ```bash
-mysql -u root -p < backend/schema.sql
+cd backend
+cp .env.example .env
+# Set DATABASE_URL to your PostgreSQL connection string
+npx prisma migrate deploy
+node seed.js   # optional demo data
 ```
 
 ### 2. Backend
 
 ```bash
 cd backend
-cp .env.example .env
-# Edit .env with your DB credentials and API keys
 npm install
 npm run dev
 ```
@@ -58,6 +62,16 @@ npm install
 npm run dev
 ```
 
+## Deployment (free)
+
+This app is deployed for free using:
+
+- **Frontend** → [Vercel](https://vercel.com) (root directory `frontend`, auto-deploys on push to `master`)
+- **Backend** → [Render](https://render.com) (root directory `backend`, build: `npm install && npm run build`, start: `npm start`, auto-deploys on push to `master`)
+- **Database** → [Neon](https://neon.tech) (free serverless PostgreSQL)
+
+Push to `master` and both Vercel and Render redeploy automatically. Render's build step runs `prisma migrate deploy`, so schema changes are applied automatically too.
+
 ## Demo Accounts (password: `password`)
 
 | Role | Email |
@@ -69,13 +83,14 @@ npm run dev
 
 ## Portals
 
-### Patient Portal (13 pages)
+### Patient Portal (14 pages)
 - Dashboard with health score ring
 - Appointments booking
 - Medical records (labs, prescriptions, allergies, vaccinations)
 - Diet tracker with macro tracking + water logging
 - Safe Appetite allergen scanner
 - Health insights with 7-day trend charts
+- Wearable Sync (Google Fit via Google Drive Takeout)
 - Real-time messaging with doctor
 - AI health assistant (Gemini)
 - NHS hospital map
@@ -115,14 +130,18 @@ npm run dev
 ## Environment Variables
 
 ```env
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=your_password
-DB_NAME=healthsphere
+DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
 JWT_SECRET=your_secret_key
-PORT=5000
-CLIENT_URL=http://localhost:5173
+JWT_EXPIRES_IN=7d
+PORT=5002
+CLIENT_URL=http://localhost:5175
 GEMINI_API_KEY=your_key
 SPOONACULAR_API_KEY=your_key
+```
+
+Frontend (`frontend/.env`):
+
+```env
+VITE_API_URL=http://localhost:5002/api
+VITE_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
 ```

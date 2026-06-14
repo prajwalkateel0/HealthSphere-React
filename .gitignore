@@ -1,0 +1,25 @@
+node_modules
+dist
+dist-ssr
+*.log
+npm-debug.log*
+
+# Environment files (never commit secrets)
+.env
+.env.local
+.env.*.local
+
+# Uploaded files (not persisted on free hosting anyway)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

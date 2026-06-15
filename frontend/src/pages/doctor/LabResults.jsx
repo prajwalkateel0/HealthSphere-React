@@ -51,22 +51,26 @@ export default function LabResults() {
       </div>
 
       <div className="card">
+        <div className="card-header">
+          <h3><i className="fas fa-flask" /> Lab Results ({labs.length})</h3>
+        </div>
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>Patient</th><th>Test</th><th>Result</th><th>Status</th><th>Date</th><th>Notes</th></tr>
+              <tr><th>Patient</th><th>NHS ID</th><th>Test</th><th>Result</th><th>Status</th><th>Date</th><th>Notes</th></tr>
             </thead>
             <tbody>
               {labs.length ? labs.map(l => (
                 <tr key={l.id}>
                   <td style={{ fontWeight: 600 }}>{l.patient_name}</td>
+                  <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{l.nhs_id}</td>
                   <td>{l.test_type}</td>
                   <td>{l.result}</td>
                   <td>{statusBadge(l.status)}</td>
                   <td>{l.test_date ? new Date(l.test_date).toLocaleDateString('en-GB') : '—'}</td>
                   <td style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.notes || '—'}</td>
                 </tr>
-              )) : <tr><td colSpan={6}><div className="empty-state">No lab results</div></td></tr>}
+              )) : <tr><td colSpan={7}><div className="empty-state">No lab results</div></td></tr>}
             </tbody>
           </table>
         </div>

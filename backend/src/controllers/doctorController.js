@@ -193,10 +193,10 @@ exports.getLabResults = async (req, res) => {
     const patientIds = await prisma.appointment.groupBy({ by: ['patientId'], where: { doctorId: req.user.id } }).then(r => r.map(x => x.patientId));
     const rows = await prisma.medicalRecord.findMany({
       where: { patientId: { in: patientIds } },
-      include: { patient: { select: { name: true } } },
+      include: { patient: { select: { name: true, nhsId: true } } },
       orderBy: { testDate: 'desc' },
     });
-    res.json(rows.map(r => ({ ...r, patient_name: r.patient.name })));
+    res.json(rows.map(r => ({ ...r, patient_name: r.patient.name, nhs_id: r.patient.nhsId })));
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 

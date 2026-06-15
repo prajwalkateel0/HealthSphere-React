@@ -632,6 +632,7 @@ model DoctorSchedule {
   startTime   DateTime? @map("start_time") @db.Time
   endTime     DateTime? @map("end_time") @db.Time
   isAvailable Boolean  @default(true) @map("is_available")
+  slotDuration Int     @default(30) @map("slot_duration")
 
   doctor      Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
 

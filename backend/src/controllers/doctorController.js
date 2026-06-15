@@ -187,10 +187,11 @@ exports.getPatientDetails = async (req, res) => {
 
 exports.getAppointments = async (req, res) => {
   try {
-    const { status, date } = req.query;
+    const { status, date, from, to } = req.query;
     const where = { doctorId: req.user.id };
     if (status) where.status = status;
     if (date) { const d = new Date(date); d.setHours(0,0,0,0); where.appointmentDate = d; }
+    else if (from && to) { where.appointmentDate = { gte: new Date(from), lte: new Date(to) }; }
 
     const rows = await prisma.appointment.findMany({
       where,
@@ -355,30 +356,41 @@ exports.addClinicalNote = async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
+const timeToStr = (t) => t ? t.toISOString().slice(11, 16) : null;
+
 exports.getSchedule = async (req, res) => {
   try {
     const doc = await prisma.doctor.findUnique({ where: { userId: req.user.id } });
     if (!doc) return res.json([]);
     const rows = await prisma.doctorSchedule.findMany({ where: { doctorId: doc.id }, orderBy: { dayOfWeek: 'asc' } });
-    res.json(rows);
+    res.json(rows.map(r => ({
+      day_of_week: r.dayOfWeek,
+      start_time: timeToStr(r.startTime),
+      end_time: timeToStr(r.endTime),
+      is_available: r.isAvailable,
+      slot_duration: r.slotDuration,
+    })));
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
 exports.updateSchedule = async (req, res) => {
   try {
-    const { schedules } = req.body;
+    const { schedules, slot_duration } = req.body;
     const doc = await prisma.doctor.findUnique({ where: { userId: req.user.id } });
     if (!doc) return res.status(404).json({ error: 'Doctor profile not found' });
+    const slotDuration = Math.min(60, Math.max(15, +slot_duration || 30));
     await prisma.doctorSchedule.deleteMany({ where: { doctorId: doc.id } });
-    await prisma.doctorSchedule.createMany({
-      data: schedules.map(s => ({
+    const data = schedules
+      .filter(s => s.is_available && s.start_time && s.end_time && s.start_time < s.end_time)
+      .map(s => ({
         doctorId: doc.id,
         dayOfWeek: s.day_of_week,
-        startTime: s.start_time ? new Date(`1970-01-01T${s.start_time}`) : null,
-        endTime: s.end_time ? new Date(`1970-01-01T${s.end_time}`) : null,
-        isAvailable: s.is_available,
-      })),
-    });
+        startTime: new Date(`1970-01-01T${s.start_time}:00Z`),
+        endTime: new Date(`1970-01-01T${s.end_time}:00Z`),
+        isAvailable: true,
+        slotDuration,
+      }));
+    if (data.length) await prisma.doctorSchedule.createMany({ data });
     res.json({ message: 'Schedule updated' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 };

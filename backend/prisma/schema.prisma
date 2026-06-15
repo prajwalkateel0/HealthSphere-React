@@ -177,6 +177,7 @@ model Doctor {
   hcpcNumber   String?  @map("hcpc_number") @db.VarChar(50)
   hcpcVerified Boolean  @default(false) @map("hcpc_verified")
   rating       Decimal  @default(0.0) @db.Decimal(3, 2)
+  experienceYears Int?  @map("experience_years")
   bio          String?
   availability String?
   createdAt    DateTime @default(now()) @map("created_at")

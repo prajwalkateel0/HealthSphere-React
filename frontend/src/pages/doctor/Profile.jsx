@@ -15,6 +15,7 @@ export default function DoctorProfile() {
         name: r.data.name || '', phone: r.data.phone || '',
         address: r.data.address || '', specialization: r.data.specialization || '',
         hospital: r.data.hospital || '', bio: r.data.bio || '', availability: r.data.availability || '',
+        experience_years: r.data.experienceYears ?? '',
       });
     }).finally(() => setLoading(false));
   }, []);
@@ -42,13 +43,15 @@ export default function DoctorProfile() {
           <h2 style={{ fontWeight: 700, marginBottom: 4 }}>{profile?.name}</h2>
           <div style={{ color: 'var(--text-muted)', marginBottom: 12 }}>{profile?.specialization}</div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
-            {profile?.hcpc_verified && <span className="badge badge-success">✓ HCPC Verified</span>}
+            {profile?.hcpcVerified && <span className="badge badge-success">✓ HCPC Verified</span>}
             <span className="badge badge-info">⭐ {profile?.rating || '0.0'}/5.0</span>
           </div>
           <div style={{ marginTop: 20, textAlign: 'left', display: 'grid', gap: 10 }}>
             {[
               ['🏥 Hospital', profile?.hospital],
-              ['📋 HCPC', profile?.hcpc_number],
+              ['📋 HCPC', profile?.hcpcNumber],
+              ['💼 Experience', profile?.experienceYears != null ? `${profile.experienceYears} years` : null],
+              ['🪪 NHS ID', profile?.nhsId],
               ['📧 Email', profile?.email],
               ['📞 Phone', profile?.phone],
               ['🌍 Address', profile?.address],
@@ -83,6 +86,11 @@ export default function DoctorProfile() {
                 <input className="form-control" value={form[key] || ''} onChange={e => setForm({...form, [key]: e.target.value})} />
               </div>
             ))}
+            <div className="form-group">
+              <label className="form-label">Years of Experience</label>
+              <input type="number" min="0" className="form-control" value={form.experience_years}
+                onChange={e => setForm({...form, experience_years: e.target.value})} />
+            </div>
             <div className="form-group">
               <label className="form-label">Address</label>
               <textarea className="form-control" rows={2} value={form.address} onChange={e => setForm({...form, address: e.target.value})} />

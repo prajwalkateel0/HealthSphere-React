@@ -416,9 +416,15 @@ exports.getDoctorProfile = async (req, res) => {
 
 exports.updateDoctorProfile = async (req, res) => {
   try {
-    const { name, phone, address, specialization, hospital, bio, availability } = req.body;
+    const { name, phone, address, specialization, hospital, bio, availability, experience_years } = req.body;
     await prisma.user.update({ where: { id: req.user.id }, data: { name, phone, address } });
-    await prisma.doctor.updateMany({ where: { userId: req.user.id }, data: { specialization, hospital, bio, availability } });
+    await prisma.doctor.updateMany({
+      where: { userId: req.user.id },
+      data: {
+        specialization, hospital, bio, availability,
+        experienceYears: experience_years !== undefined && experience_years !== '' ? +experience_years : null,
+      },
+    });
     res.json({ message: 'Profile updated' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 };

@@ -1,12 +1,25 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/axios';
 
+function timeAgo(dateStr) {
+  const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+  return new Date(dateStr).toLocaleDateString('en-GB');
+}
+
 export default function DoctorAlerts() {
   const [alerts, setAlerts] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/doctor/alerts').then(r => setAlerts(r.data)).finally(() => setLoading(false));
+    Promise.all([
+      api.get('/doctor/alerts').then(r => setAlerts(r.data)),
+      api.get('/doctor/notifications').then(r => setNotifications(r.data)),
+    ]).finally(() => setLoading(false));
   }, []);
 
   const priorityColors = { low: 'info', medium: 'warning', high: 'danger', critical: 'danger' };
@@ -46,6 +59,24 @@ export default function DoctorAlerts() {
           </div>
         )) : (
           <div className="empty-state"><div className="empty-icon">✅</div><p>No active alerts</p></div>
+        )}
+      </div>
+
+      <div className="card" style={{ marginTop: 20 }}>
+        <div className="card-header">
+          <h3>Notifications</h3>
+        </div>
+        {notifications.length ? notifications.map(n => (
+          <div key={n.id} className={`notif-item${!n.isRead ? ' unread' : ''}`}>
+            <div className="notif-icon">🔔</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600 }}>{n.title}</div>
+              <div style={{ fontSize: 13.5, color: 'var(--text)' }}>{n.message}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{timeAgo(n.createdAt)}</div>
+            </div>
+          </div>
+        )) : (
+          <div className="empty-state"><div className="empty-icon">🔔</div><p>No notifications</p></div>
         )}
       </div>
     </div>

@@ -206,6 +206,17 @@ exports.getAlerts = async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
+exports.getNotifications = async (req, res) => {
+  try {
+    const rows = await prisma.notification.findMany({
+      where: { userId: req.user.id },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
 exports.getDoctorProfile = async (req, res) => {
   try {
     const user = await prisma.user.findUnique({ where: { id: req.user.id }, include: { doctor: true } });

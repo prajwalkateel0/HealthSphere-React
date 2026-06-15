@@ -24,6 +24,7 @@ router.post('/clinical-notes', ctrl.addClinicalNote);
 router.get('/schedule', ctrl.getSchedule);
 router.put('/schedule', ctrl.updateSchedule);
 router.get('/alerts', ctrl.getAlerts);
+router.get('/notifications', ctrl.getNotifications);
 router.get('/profile', ctrl.getDoctorProfile);
 router.put('/profile', ctrl.updateDoctorProfile);
 

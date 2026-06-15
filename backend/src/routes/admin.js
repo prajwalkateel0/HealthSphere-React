@@ -19,5 +19,7 @@ router.delete('/food-database/:id', ctrl.deleteFoodItem);
 router.get('/diseases', ctrl.getDiseases);
 router.post('/diseases', ctrl.addDisease);
 router.delete('/diseases/:id', ctrl.deleteDisease);
+router.get('/settings', ctrl.getSettings);
+router.post('/test-email', ctrl.sendTestEmail);
 
 module.exports = router;

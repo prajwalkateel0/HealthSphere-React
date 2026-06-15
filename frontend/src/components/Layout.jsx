@@ -37,6 +37,8 @@ const pageTitles = {
   '/admin/access-logs': ['Access Logs', 'Privacy audit trail'],
   '/admin/food-database': ['Food Database', 'Nutrition data'],
   '/admin/diseases': ['Disease Registry', 'Genetic conditions'],
+  '/admin/settings': ['Settings', 'System configuration'],
+  '/admin/test-email': ['Email Testing', 'Test automated email templates'],
   '/government/dashboard': ['Gov Dashboard', 'Population health'],
   '/government/analytics': ['Analytics', 'Population insights'],
   '/government/alerts': ['Health Alerts', 'National alerts'],

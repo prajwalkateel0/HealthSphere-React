@@ -1,4 +1,5 @@
 const prisma = require('../config/db');
+const mailer = require('../utils/mailer');
 
 exports.getDashboard = async (req, res) => {
   try {
@@ -150,5 +151,75 @@ exports.deleteDisease = async (req, res) => {
   try {
     await prisma.geneticDisease.delete({ where: { id: +req.params.id } });
     res.json({ message: 'Deleted' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+exports.getSettings = async (req, res) => {
+  try {
+    const tables = {
+      users: prisma.user.count(),
+      appointments: prisma.appointment.count(),
+      medical_records: prisma.medicalRecord.count(),
+      allergies: prisma.allergy.count(),
+      vaccinations: prisma.vaccination.count(),
+      prescriptions: prisma.prescription.count(),
+      diet_logs: prisma.dietLog.count(),
+      health_metrics: prisma.healthMetric.count(),
+      messages: prisma.message.count(),
+      food_database: prisma.foodDatabase.count(),
+      genetic_diseases: prisma.geneticDisease.count(),
+    };
+    const counts = Object.fromEntries(await Promise.all(Object.entries(tables).map(async ([k, p]) => [k, await p])));
+    res.json({
+      appName: 'HealthSphere',
+      systemEmail: mailer.MAIL_ADMIN,
+      tables: counts,
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+exports.sendTestEmail = async (req, res) => {
+  try {
+    const { type = 'test', to } = req.body;
+    const recipient = to || mailer.MAIL_ADMIN;
+    let sent = false;
+
+    switch (type) {
+      case 'test': {
+        const html = mailer.hsMailTemplate(
+          'Test Email ✅',
+          mailer.p('This is a <strong>test email</strong> from HealthSphere.')
+          + mailer.success('✅ If you received this, your email configuration is working correctly!')
+          + mailer.dataTable({ 'SMTP Host': `${mailer.MAIL_HOST}:${mailer.MAIL_PORT}`, From: mailer.MAIL_FROM, 'Sent at': new Date().toLocaleString('en-GB') }),
+        );
+        sent = await mailer.hsSendEmail(recipient, 'Admin', 'HealthSphere — Email Test', html);
+        break;
+      }
+      case 'welcome':
+        sent = await mailer.mailPatientWelcome(recipient, 'Test Patient', 'PT123456TEST');
+        break;
+      case 'approval_request':
+        sent = await mailer.mailAdminNewApplication('Dr. Test User', recipient, 'doctor', 'DR123456', { HCPC: 'HCPC12345678', Specialization: 'Cardiology', Hospital: 'Test Hospital' });
+        break;
+      case 'approved':
+        sent = await mailer.mailAccountApproved(recipient, 'Dr. Test User', 'doctor');
+        break;
+      case 'rejected':
+        sent = await mailer.mailAccountRejected(recipient, 'Test User', 'doctor', 'HCPC number could not be verified.');
+        break;
+      case 'appointment':
+        sent = await mailer.mailAppointmentPatient(recipient, 'Test Patient', 'Emma Hall', 'Monday, 15 May 2026', '09:30', 'BP Review', 'Leicester Royal Infirmary');
+        break;
+      case 'emergency':
+        sent = await mailer.mailEmergencyAlert(recipient, 'Test Doctor', 'Test Patient', 'PT123456', 'I am experiencing severe chest pain and shortness of breath.');
+        break;
+      case 'prescription':
+        sent = await mailer.mailPrescriptionIssued(recipient, 'Test Patient', 'Emma Hall', 'Amlodipine', '5mg', 'Once daily (Morning)', 'Take with water for blood pressure control');
+        break;
+      default:
+        return res.status(400).json({ error: 'Unknown email type' });
+    }
+
+    res.json({ success: sent, to: recipient });
   } catch (err) { res.status(500).json({ error: err.message }); }
 };

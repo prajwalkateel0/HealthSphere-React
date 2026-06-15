@@ -42,6 +42,8 @@ const adminNav = [
   { to: '/admin/access-logs', icon: '🔒', label: 'Access Logs' },
   { to: '/admin/food-database', icon: '🍎', label: 'Food Database' },
   { to: '/admin/diseases', icon: '🧬', label: 'Diseases' },
+  { to: '/admin/settings', icon: '⚙️', label: 'Settings' },
+  { to: '/admin/test-email', icon: '📨', label: 'Email Testing' },
 ];
 
 const govNav = [

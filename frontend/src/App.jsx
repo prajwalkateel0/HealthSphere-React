@@ -45,6 +45,8 @@ import AdminAnalytics from './pages/admin/Analytics';
 import AccessLogs from './pages/admin/AccessLogs';
 import FoodDatabase from './pages/admin/FoodDatabase';
 import Diseases from './pages/admin/Diseases';
+import AdminSettings from './pages/admin/Settings';
+import TestEmail from './pages/admin/TestEmail';
 
 // Government pages
 import GovDashboard from './pages/government/Dashboard';
@@ -123,6 +125,8 @@ function AppRoutes() {
       <Route path="/admin/access-logs" element={<ProtectedRoute roles={['admin']}><AccessLogs /></ProtectedRoute>} />
       <Route path="/admin/food-database" element={<ProtectedRoute roles={['admin']}><FoodDatabase /></ProtectedRoute>} />
       <Route path="/admin/diseases" element={<ProtectedRoute roles={['admin']}><Diseases /></ProtectedRoute>} />
+      <Route path="/admin/settings" element={<ProtectedRoute roles={['admin']}><AdminSettings /></ProtectedRoute>} />
+      <Route path="/admin/test-email" element={<ProtectedRoute roles={['admin']}><TestEmail /></ProtectedRoute>} />
 
       {/* Government */}
       <Route path="/government/dashboard" element={<ProtectedRoute roles={['government']}><GovDashboard /></ProtectedRoute>} />

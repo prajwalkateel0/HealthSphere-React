@@ -6,8 +6,8 @@ exports.getConversations = async (req, res) => {
     const msgs = await prisma.message.findMany({
       where: { OR: [{ senderId: id }, { receiverId: id }] },
       include: {
-        sender: { select: { id: true, name: true, role: true, profileImage: true, doctor: { select: { specialization: true } } } },
-        receiver: { select: { id: true, name: true, role: true, profileImage: true, doctor: { select: { specialization: true } } } },
+        sender: { select: { id: true, name: true, role: true, profileImage: true, nhsId: true, doctor: { select: { specialization: true } } } },
+        receiver: { select: { id: true, name: true, role: true, profileImage: true, nhsId: true, doctor: { select: { specialization: true } } } },
       },
       orderBy: { createdAt: 'desc' },
     });

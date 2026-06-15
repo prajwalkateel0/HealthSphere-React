@@ -34,6 +34,7 @@ import DoctorSchedule from './pages/doctor/Schedule';
 import LabResults from './pages/doctor/LabResults';
 import DoctorPrescriptions from './pages/doctor/Prescriptions';
 import DoctorAlerts from './pages/doctor/Alerts';
+import DoctorMessages from './pages/doctor/Messages';
 import DoctorProfile from './pages/doctor/Profile';
 
 // Admin pages
@@ -113,7 +114,7 @@ function AppRoutes() {
       <Route path="/doctor/lab-results" element={<ProtectedRoute roles={['doctor']}><LabResults /></ProtectedRoute>} />
       <Route path="/doctor/prescriptions" element={<ProtectedRoute roles={['doctor']}><DoctorPrescriptions /></ProtectedRoute>} />
       <Route path="/doctor/alerts" element={<ProtectedRoute roles={['doctor']}><DoctorAlerts /></ProtectedRoute>} />
-      <Route path="/doctor/messages" element={<ProtectedRoute roles={['doctor']}><PatientMessages /></ProtectedRoute>} />
+      <Route path="/doctor/messages" element={<ProtectedRoute roles={['doctor']}><DoctorMessages /></ProtectedRoute>} />
       <Route path="/doctor/profile" element={<ProtectedRoute roles={['doctor']}><DoctorProfile /></ProtectedRoute>} />
 
       {/* Admin */}

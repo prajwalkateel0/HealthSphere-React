@@ -129,10 +129,14 @@ exports.getDashboard = async (req, res) => {
 exports.getPatients = async (req, res) => {
   try {
     const { search } = req.query;
-    const patientIds = await prisma.appointment.groupBy({
+    const patientGroups = await prisma.appointment.groupBy({
       by: ['patientId'],
       where: { doctorId: req.user.id },
-    }).then(r => r.map(x => x.patientId));
+      _max: { appointmentDate: true },
+    });
+    const patientIds = patientGroups.map(g => g.patientId);
+    const lastVisitMap = {};
+    patientGroups.forEach(g => { lastVisitMap[g.patientId] = g._max.appointmentDate; });
 
     const patients = await prisma.user.findMany({
       where: {
@@ -141,7 +145,26 @@ exports.getPatients = async (req, res) => {
       },
       select: { id: true, name: true, email: true, dateOfBirth: true, gender: true, bloodType: true, phone: true, nhsId: true, profileImage: true },
     });
-    res.json(patients);
+
+    const [allergiesRaw, metricsRaw] = await Promise.all([
+      prisma.allergy.findMany({ where: { userId: { in: patientIds }, isActive: true } }),
+      prisma.healthMetric.findMany({ where: { userId: { in: patientIds } }, orderBy: { recordedAt: 'desc' } }),
+    ]);
+    const allergyByUser = {};
+    for (const a of allergiesRaw) if (!allergyByUser[a.userId]) allergyByUser[a.userId] = a.allergen;
+    const metricByUser = {};
+    for (const m of metricsRaw) if (!metricByUser[m.userId]) metricByUser[m.userId] = m;
+
+    res.json(patients.map(p => ({
+      ...p,
+      date_of_birth: p.dateOfBirth,
+      blood_type: p.bloodType,
+      nhs_id: p.nhsId,
+      last_visit: lastVisitMap[p.id] || null,
+      allergy: allergyByUser[p.id] || null,
+      bp_sys: metricByUser[p.id]?.systolic ?? null,
+      heart_rate: metricByUser[p.id]?.heartRate ?? null,
+    })));
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
@@ -154,11 +177,11 @@ exports.getPatientDetails = async (req, res) => {
       prisma.prescription.findMany({ where: { patientId }, orderBy: { createdAt: 'desc' } }),
       prisma.allergy.findMany({ where: { userId: patientId } }),
       prisma.healthMetric.findMany({ where: { userId: patientId }, orderBy: { recordedAt: 'desc' }, take: 10 }),
-      prisma.clinicalNote.findMany({ where: { patientId }, orderBy: { createdAt: 'desc' } }),
+      prisma.clinicalNote.findMany({ where: { patientId }, include: { doctor: { select: { name: true } } }, orderBy: { createdAt: 'desc' } }),
     ]);
     if (!patient) return res.status(404).json({ error: 'Patient not found' });
     const { password: _, ...patientData } = patient;
-    res.json({ patient: patientData, labs, prescriptions, allergies, vitals, notes });
+    res.json({ patient: patientData, labs, prescriptions, allergies, vitals, notes: notes.map(n => ({ ...n, doctor_name: n.doctor.name, doctor: undefined })) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
@@ -230,12 +253,14 @@ exports.getPrescriptions = async (req, res) => {
 exports.issuePrescription = async (req, res) => {
   try {
     const { patient_id, medication_name, dosage, frequency, duration, start_date, end_date, instructions } = req.body;
+    const filePath = req.file?.filename || null;
     const p = await prisma.prescription.create({
       data: {
         patientId: +patient_id, doctorId: req.user.id,
         medicationName: medication_name, dosage, frequency, duration, instructions,
         startDate: start_date ? new Date(start_date) : null,
         endDate: end_date ? new Date(end_date) : null,
+        filePath,
       },
     });
     res.status(201).json(p);

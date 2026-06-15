@@ -236,6 +236,7 @@ model Prescription {
   instructions   String?
   status         PrescriptionStatus @default(active)
   refillRequested Boolean           @default(false) @map("refill_requested")
+  filePath       String?            @map("file_path") @db.VarChar(500)
   createdAt      DateTime           @default(now()) @map("created_at")
 
   patient        User @relation("PatientPrescriptions", fields: [patientId], references: [id], onDelete: Cascade)

@@ -19,7 +19,7 @@ router.put('/appointments/:id/status', ctrl.updateAppointmentStatus);
 router.get('/lab-results', ctrl.getLabResults);
 router.post('/lab-results', upload.single('file'), ctrl.addLabResult);
 router.get('/prescriptions', ctrl.getPrescriptions);
-router.post('/prescriptions', ctrl.issuePrescription);
+router.post('/prescriptions', upload.single('file'), ctrl.issuePrescription);
 router.post('/clinical-notes', ctrl.addClinicalNote);
 router.get('/schedule', ctrl.getSchedule);
 router.put('/schedule', ctrl.updateSchedule);

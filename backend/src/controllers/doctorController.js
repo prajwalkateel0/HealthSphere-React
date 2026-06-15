@@ -1,43 +1,128 @@
 const prisma = require('../config/db');
+const { calculateHealthScore } = require('../utils/healthAnalytics');
 
 exports.getDashboard = async (req, res) => {
   try {
     const id = req.user.id;
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+    const sevenDaysAgo = new Date(today); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const year = new Date().getFullYear();
 
-    const [todaysAppts, totalPatients, criticalLabs, pendingRefills, recentMessages] = await Promise.all([
+    const [todaysApptsRaw, totalPatients, pendingLabs, criticalLabs, emergencyMsgsRaw, patientGroups] = await Promise.all([
       prisma.appointment.findMany({
         where: { doctorId: id, appointmentDate: { gte: today, lt: tomorrow } },
-        include: { patient: { select: { name: true, dateOfBirth: true, bloodType: true } } },
+        include: { patient: { select: { id: true, name: true, dateOfBirth: true, bloodType: true, nhsId: true } } },
         orderBy: { appointmentTime: 'asc' },
       }),
       prisma.appointment.groupBy({ by: ['patientId'], where: { doctorId: id } }).then(r => r.length),
+      prisma.medicalRecord.count({ where: { doctorId: id, status: 'critical' } }),
       prisma.medicalRecord.findMany({
-        where: { status: 'critical', patient: { patientAppts: { some: { doctorId: id } } } },
+        where: { doctorId: id, status: 'critical' },
         include: { patient: { select: { name: true } } },
-        orderBy: { testDate: 'desc' },
-        take: 5,
-      }),
-      prisma.prescription.findMany({
-        where: { doctorId: id, refillRequested: true, status: 'active' },
-        include: { patient: { select: { name: true } } },
-        take: 5,
+        orderBy: { createdAt: 'desc' },
+        take: 3,
       }),
       prisma.message.findMany({
-        where: { receiverId: id, isRead: false },
+        where: { receiverId: id, isRead: false, isEmergency: true },
         include: { sender: { select: { name: true } } },
         orderBy: { createdAt: 'desc' },
-        take: 5,
+        take: 3,
       }),
+      prisma.appointment.groupBy({ by: ['patientId'], where: { doctorId: id }, _max: { appointmentDate: true } }),
     ]);
 
-    const appts = todaysAppts.map(a => ({ ...a, patient_name: a.patient.name, date_of_birth: a.patient.dateOfBirth, blood_type: a.patient.bloodType }));
-    const labs = criticalLabs.map(l => ({ ...l, patient_name: l.patient.name }));
-    const refills = pendingRefills.map(p => ({ ...p, patient_name: p.patient.name }));
-    const msgs = recentMessages.map(m => ({ ...m, sender_name: m.sender.name }));
+    const topPatientGroups = [...patientGroups]
+      .sort((a, b) => new Date(b._max.appointmentDate) - new Date(a._max.appointmentDate))
+      .slice(0, 20);
+    const topPatientIds = topPatientGroups.map(g => g.patientId);
 
-    res.json({ todaysAppts: appts, totalPatients, criticalLabs: labs, pendingRefills: refills, recentMessages: msgs });
+    const todayPatientIds = [...new Set(todaysApptsRaw.map(a => a.patientId))];
+    const allMetricPatientIds = [...new Set([...todayPatientIds, ...topPatientIds])];
+
+    const [metricsRaw, allergiesRaw, patientsInfo, monthlyData] = await Promise.all([
+      prisma.healthMetric.findMany({ where: { userId: { in: allMetricPatientIds } }, orderBy: { recordedAt: 'desc' } }),
+      prisma.allergy.findMany({ where: { userId: { in: allMetricPatientIds }, isActive: true, severity: 'severe' } }),
+      prisma.user.findMany({ where: { id: { in: topPatientIds } }, select: { id: true, name: true, nhsId: true } }),
+      Promise.all(Array.from({ length: 12 }, (_, m) =>
+        prisma.appointment.count({ where: { doctorId: id, appointmentDate: { gte: new Date(year, m, 1), lt: new Date(year, m + 1, 1) } } })
+      )),
+    ]);
+
+    const latestByUser = {};
+    const weekMetricsByUser = {};
+    for (const m of metricsRaw) {
+      if (!latestByUser[m.userId]) latestByUser[m.userId] = m;
+      if (m.recordedAt >= sevenDaysAgo) (weekMetricsByUser[m.userId] ||= []).push(m);
+    }
+    const allergyByUser = {};
+    for (const a of allergiesRaw) (allergyByUser[a.userId] ||= []).push(a.allergen);
+
+    const appointments = todaysApptsRaw.map(a => {
+      const vit = latestByUser[a.patientId] || {};
+      const bpSys = vit.systolic ?? null;
+      const bpDia = vit.diastolic ?? null;
+      const hr = vit.heartRate ?? null;
+      const spo2 = vit.oxygenSaturation != null ? Number(vit.oxygenSaturation) : null;
+      const stress = vit.stressLevel ?? null;
+      const severeAllergies = (allergyByUser[a.patientId] || []).join(', ');
+
+      let riskScore = 0;
+      const riskFlags = [];
+      if (bpSys != null && bpSys >= 140) { riskFlags.push('High BP'); riskScore += 30; }
+      else if (bpSys != null && bpSys >= 130) { riskFlags.push('Elevated BP'); riskScore += 15; }
+      if (hr != null && hr > 100) { riskFlags.push('Tachycardia'); riskScore += 25; }
+      if (spo2 != null && spo2 < 93) { riskFlags.push('⚠️ Low SpO₂'); riskScore += 40; }
+      if (severeAllergies) { riskFlags.push('Severe Allergy'); riskScore += 20; }
+      if (stress != null && stress > 70) { riskFlags.push('High Stress'); riskScore += 10; }
+      if (a.status === 'late') riskScore += 5;
+
+      const riskLevel = riskScore >= 50 ? 'critical' : riskScore >= 25 ? 'warning' : 'low';
+
+      return {
+        ...a,
+        patient_id: a.patientId,
+        patient_name: a.patient.name,
+        nhs_id: a.patient.nhsId,
+        blood_type: a.patient.bloodType,
+        date_of_birth: a.patient.dateOfBirth,
+        bp_sys: bpSys, bp_dia: bpDia, heart_rate: hr, spo2,
+        severe_allergies: severeAllergies,
+        risk_score: riskScore, risk_flags: riskFlags, risk_level: riskLevel,
+      };
+    });
+
+    const priorityQueue = appointments.filter(a => a.risk_score >= 25).sort((a, b) => b.risk_score - a.risk_score);
+    const criticalPts = appointments.filter(a => a.risk_level === 'critical').length;
+
+    const patientInfoMap = {};
+    patientsInfo.forEach(p => { patientInfoMap[p.id] = p; });
+    const allPatients = topPatientGroups.map(g => {
+      const p = patientInfoMap[g.patientId] || {};
+      const hs = calculateHealthScore(weekMetricsByUser[g.patientId] || []);
+      return {
+        id: g.patientId,
+        name: p.name,
+        nhs_id: p.nhsId,
+        last_visit: g._max.appointmentDate,
+        health_score: hs.score,
+        score_category: hs.category,
+        score_color: hs.color,
+      };
+    }).sort((a, b) => a.health_score - b.health_score);
+
+    res.json({
+      totalToday: appointments.length,
+      totalPatients,
+      pendingLabs,
+      criticalPts,
+      todaysAppts: appointments,
+      priorityQueue,
+      emergencyMsgs: emergencyMsgsRaw.map(m => ({ ...m, sender_name: m.sender.name })),
+      criticalLabs: criticalLabs.map(l => ({ ...l, patient_name: l.patient.name })),
+      allPatients,
+      monthlyData,
+    });
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 

@@ -117,74 +117,82 @@ enum HealthRating {
   poor
 }
 
-model User {
-  id                Int          @id @default(autoincrement())
-  name              String       @db.VarChar(255)
-  email             String       @unique @db.VarChar(255)
-  password          String       @db.VarChar(255)
-  role              Role         @default(patient)
-  status            UserStatus   @default(active)
-  nhsId             String?      @unique @map("nhs_id") @db.VarChar(50)
-  phone             String?      @db.VarChar(20)
-  dateOfBirth       DateTime?    @map("date_of_birth") @db.Date
-  gender            Gender?
-  address           String?
-  bloodType         String?      @map("blood_type") @db.VarChar(5)
-  allergiesSummary  String?      @map("allergies_summary")
-  profileImage      String?      @map("profile_image") @db.VarChar(500)
-  createdAt         DateTime     @default(now()) @map("created_at")
-  updatedAt         DateTime     @updatedAt @map("updated_at")
+enum ExerciseIntensity {
+  low
+  moderate
+  high
+}
 
-  doctor            Doctor?
-  patientAppts      Appointment[] @relation("PatientAppointments")
-  doctorAppts       Appointment[] @relation("DoctorAppointments")
-  healthMetrics     HealthMetric[]
-  allergies         Allergy[]
-  vaccinations      Vaccination[]
-  patientPrescriptions Prescription[] @relation("PatientPrescriptions")
-  doctorPrescriptions  Prescription[] @relation("DoctorPrescriptions")
-  dietLogs          DietLog[]
-  waterLogs         WaterLog[]
-  sentMessages      Message[]    @relation("SentMessages")
-  receivedMessages  Message[]    @relation("ReceivedMessages")
-  notifications     Notification[]
-  patientNotes      ClinicalNote[] @relation("PatientNotes")
-  doctorNotes       ClinicalNote[] @relation("DoctorNotes")
-  familyHistory     FamilyHistory[]
-  documents         Document[]
-  ingredientScans   IngredientScan[]
-  patientAlerts     HealthAlert[] @relation("PatientAlerts")
-  doctorAlerts      HealthAlert[] @relation("DoctorAlerts")
-  patientRecords    MedicalRecord[] @relation("PatientRecords")
-  doctorRecords     MedicalRecord[] @relation("DoctorRecords")
-  patientPrescriptionOrders PrescriptionOrder[] @relation("PatientPrescriptionOrders")
-  doctorPrescriptionOrders  PrescriptionOrder[] @relation("DoctorPrescriptionOrders")
-  questionnaire     PatientQuestionnaire?
-  questionnaireAnswers QuestionnaireAnswer[]
-  foodIntolerances  FoodIntolerance[]
-  dietPreferences   DietPreference[]
-  ingredientDislikes IngredientDislike[]
-  wearableTokens    WearableToken[]
-  googleFitDriveImports GoogleFitDriveImport[]
+model User {
+  id               Int        @id @default(autoincrement())
+  name             String     @db.VarChar(255)
+  email            String     @unique @db.VarChar(255)
+  password         String     @db.VarChar(255)
+  role             Role       @default(patient)
+  status           UserStatus @default(active)
+  nhsId            String?    @unique @map("nhs_id") @db.VarChar(50)
+  phone            String?    @db.VarChar(20)
+  dateOfBirth      DateTime?  @map("date_of_birth") @db.Date
+  gender           Gender?
+  address          String?
+  bloodType        String?    @map("blood_type") @db.VarChar(5)
+  allergiesSummary String?    @map("allergies_summary")
+  profileImage     String?    @map("profile_image") @db.VarChar(500)
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+
+  doctor                    Doctor?
+  patientAppts              Appointment[]          @relation("PatientAppointments")
+  doctorAppts               Appointment[]          @relation("DoctorAppointments")
+  healthMetrics             HealthMetric[]
+  allergies                 Allergy[]
+  vaccinations              Vaccination[]
+  patientPrescriptions      Prescription[]         @relation("PatientPrescriptions")
+  doctorPrescriptions       Prescription[]         @relation("DoctorPrescriptions")
+  dietLogs                  DietLog[]
+  exerciseLogs              ExerciseLog[]
+  waterLogs                 WaterLog[]
+  payments                  Payment[]
+  sentMessages              Message[]              @relation("SentMessages")
+  receivedMessages          Message[]              @relation("ReceivedMessages")
+  notifications             Notification[]
+  patientNotes              ClinicalNote[]         @relation("PatientNotes")
+  doctorNotes               ClinicalNote[]         @relation("DoctorNotes")
+  familyHistory             FamilyHistory[]
+  documents                 Document[]
+  ingredientScans           IngredientScan[]
+  patientAlerts             HealthAlert[]          @relation("PatientAlerts")
+  doctorAlerts              HealthAlert[]          @relation("DoctorAlerts")
+  patientRecords            MedicalRecord[]        @relation("PatientRecords")
+  doctorRecords             MedicalRecord[]        @relation("DoctorRecords")
+  patientPrescriptionOrders PrescriptionOrder[]    @relation("PatientPrescriptionOrders")
+  doctorPrescriptionOrders  PrescriptionOrder[]    @relation("DoctorPrescriptionOrders")
+  questionnaire             PatientQuestionnaire?
+  questionnaireAnswers      QuestionnaireAnswer[]
+  foodIntolerances          FoodIntolerance[]
+  dietPreferences           DietPreference[]
+  ingredientDislikes        IngredientDislike[]
+  wearableTokens            WearableToken[]
+  googleFitDriveImports     GoogleFitDriveImport[]
 
   @@map("users")
 }
 
 model Doctor {
-  id           Int      @id @default(autoincrement())
-  userId       Int      @unique @map("user_id")
-  specialization String? @db.VarChar(100)
-  hospital     String?  @db.VarChar(255)
-  hcpcNumber   String?  @map("hcpc_number") @db.VarChar(50)
-  hcpcVerified Boolean  @default(false) @map("hcpc_verified")
-  rating       Decimal  @default(0.0) @db.Decimal(3, 2)
-  experienceYears Int?  @map("experience_years")
-  bio          String?
-  availability String?
-  createdAt    DateTime @default(now()) @map("created_at")
+  id              Int      @id @default(autoincrement())
+  userId          Int      @unique @map("user_id")
+  specialization  String?  @db.VarChar(100)
+  hospital        String?  @db.VarChar(255)
+  hcpcNumber      String?  @map("hcpc_number") @db.VarChar(50)
+  hcpcVerified    Boolean  @default(false) @map("hcpc_verified")
+  rating          Decimal  @default(0.0) @db.Decimal(3, 2)
+  experienceYears Int?     @map("experience_years")
+  bio             String?
+  availability    String?
+  createdAt       DateTime @default(now()) @map("created_at")
 
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  schedule     DoctorSchedule[]
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schedule DoctorSchedule[]
 
   @@map("doctors")
 }
@@ -201,8 +209,8 @@ model Appointment {
   notes           String?
   createdAt       DateTime          @default(now()) @map("created_at")
 
-  patient         User @relation("PatientAppointments", fields: [patientId], references: [id], onDelete: Cascade)
-  doctor          User @relation("DoctorAppointments", fields: [doctorId], references: [id], onDelete: Cascade)
+  patient User @relation("PatientAppointments", fields: [patientId], references: [id], onDelete: Cascade)
+  doctor  User @relation("DoctorAppointments", fields: [doctorId], references: [id], onDelete: Cascade)
 
   @@map("appointments")
 }
@@ -219,31 +227,31 @@ model MedicalRecord {
   filePath  String?      @map("file_path") @db.VarChar(500)
   createdAt DateTime     @default(now()) @map("created_at")
 
-  patient   User @relation("PatientRecords", fields: [patientId], references: [id], onDelete: Cascade)
-  doctor    User? @relation("DoctorRecords", fields: [doctorId], references: [id])
+  patient User  @relation("PatientRecords", fields: [patientId], references: [id], onDelete: Cascade)
+  doctor  User? @relation("DoctorRecords", fields: [doctorId], references: [id])
 
   @@map("medical_records")
 }
 
 model Prescription {
-  id             Int                @id @default(autoincrement())
-  patientId      Int                @map("patient_id")
-  doctorId       Int?               @map("doctor_id")
-  medicationName String             @map("medication_name") @db.VarChar(255)
-  dosage         String?            @db.VarChar(100)
-  frequency      String?            @db.VarChar(100)
-  duration       String?            @db.VarChar(100)
-  startDate      DateTime?          @map("start_date") @db.Date
-  endDate        DateTime?          @map("end_date") @db.Date
-  instructions   String?
-  status         PrescriptionStatus @default(active)
-  refillRequested Boolean           @default(false) @map("refill_requested")
-  filePath       String?            @map("file_path") @db.VarChar(500)
-  createdAt      DateTime           @default(now()) @map("created_at")
+  id              Int                @id @default(autoincrement())
+  patientId       Int                @map("patient_id")
+  doctorId        Int?               @map("doctor_id")
+  medicationName  String             @map("medication_name") @db.VarChar(255)
+  dosage          String?            @db.VarChar(100)
+  frequency       String?            @db.VarChar(100)
+  duration        String?            @db.VarChar(100)
+  startDate       DateTime?          @map("start_date") @db.Date
+  endDate         DateTime?          @map("end_date") @db.Date
+  instructions    String?
+  status          PrescriptionStatus @default(active)
+  refillRequested Boolean            @default(false) @map("refill_requested")
+  filePath        String?            @map("file_path") @db.VarChar(500)
+  createdAt       DateTime           @default(now()) @map("created_at")
 
-  patient        User @relation("PatientPrescriptions", fields: [patientId], references: [id], onDelete: Cascade)
-  doctor         User? @relation("DoctorPrescriptions", fields: [doctorId], references: [id])
-  orders         PrescriptionOrder[]
+  patient User                @relation("PatientPrescriptions", fields: [patientId], references: [id], onDelete: Cascade)
+  doctor  User?               @relation("DoctorPrescriptions", fields: [doctorId], references: [id])
+  orders  PrescriptionOrder[]
 
   @@map("prescriptions")
 }
@@ -279,9 +287,9 @@ model PrescriptionOrder {
   orderedAt       DateTime                @default(now()) @map("ordered_at")
   updatedAt       DateTime                @updatedAt @map("updated_at")
 
-  prescription    Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
-  patient         User @relation("PatientPrescriptionOrders", fields: [patientId], references: [id], onDelete: Cascade)
-  doctor          User @relation("DoctorPrescriptionOrders", fields: [doctorId], references: [id], onDelete: Cascade)
+  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  patient      User         @relation("PatientPrescriptionOrders", fields: [patientId], references: [id], onDelete: Cascade)
+  doctor       User         @relation("DoctorPrescriptionOrders", fields: [doctorId], references: [id], onDelete: Cascade)
 
   @@map("prescription_orders")
 }
@@ -297,7 +305,7 @@ model Allergy {
   isActive    Boolean          @default(true) @map("is_active")
   createdAt   DateTime         @default(now()) @map("created_at")
 
-  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("allergies")
 }
@@ -310,7 +318,7 @@ model FoodIntolerance {
   isActive    Boolean          @default(true) @map("is_active")
   createdAt   DateTime         @default(now()) @map("created_at")
 
-  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("food_intolerances")
 }
@@ -322,7 +330,7 @@ model DietPreference {
   isActive   Boolean  @default(true) @map("is_active")
   createdAt  DateTime @default(now()) @map("created_at")
 
-  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("diet_preferences")
 }
@@ -334,24 +342,24 @@ model IngredientDislike {
   isActive   Boolean  @default(true) @map("is_active")
   createdAt  DateTime @default(now()) @map("created_at")
 
-  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("ingredient_dislikes")
 }
 
 model Vaccination {
-  id              Int       @id @default(autoincrement())
-  userId          Int       @map("user_id")
-  vaccineName     String    @map("vaccine_name") @db.VarChar(255)
-  doseNumber      Int       @default(1) @map("dose_number")
+  id               Int       @id @default(autoincrement())
+  userId           Int       @map("user_id")
+  vaccineName      String    @map("vaccine_name") @db.VarChar(255)
+  doseNumber       Int       @default(1) @map("dose_number")
   dateAdministered DateTime? @map("date_administered") @db.Date
-  nextDueDate     DateTime? @map("next_due_date") @db.Date
-  batchNumber     String?   @map("batch_number") @db.VarChar(100)
-  administeredBy  String?   @map("administered_by") @db.VarChar(255)
-  notes           String?
-  createdAt       DateTime  @default(now()) @map("created_at")
+  nextDueDate      DateTime? @map("next_due_date") @db.Date
+  batchNumber      String?   @map("batch_number") @db.VarChar(100)
+  administeredBy   String?   @map("administered_by") @db.VarChar(255)
+  notes            String?
+  createdAt        DateTime  @default(now()) @map("created_at")
 
-  user            User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("vaccinations")
 }
@@ -375,7 +383,7 @@ model HealthMetric {
   source           String   @default("manual") @db.VarChar(20)
   recordedAt       DateTime @default(now()) @map("recorded_at")
 
-  user             User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("health_metrics")
 }
@@ -397,14 +405,14 @@ model WearableToken {
 }
 
 model GoogleFitDriveImport {
-  id            Int       @id @default(autoincrement())
-  userId        Int       @map("user_id")
-  driveFileId   String    @map("drive_file_id") @db.VarChar(200)
-  fileName      String    @map("file_name") @db.VarChar(255)
-  modifiedTime  String?   @map("modified_time") @db.VarChar(50)
-  importedRows  Int       @default(0) @map("imported_rows")
-  latestDate    DateTime? @map("latest_date") @db.Date
-  createdAt     DateTime  @default(now()) @map("created_at")
+  id           Int       @id @default(autoincrement())
+  userId       Int       @map("user_id")
+  driveFileId  String    @map("drive_file_id") @db.VarChar(200)
+  fileName     String    @map("file_name") @db.VarChar(255)
+  modifiedTime String?   @map("modified_time") @db.VarChar(50)
+  importedRows Int       @default(0) @map("imported_rows")
+  latestDate   DateTime? @map("latest_date") @db.Date
+  createdAt    DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -424,9 +432,25 @@ model DietLog {
   fiber    Decimal? @db.Decimal(6, 2)
   logDate  DateTime @default(now()) @map("log_date")
 
-  user     User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("diet_logs")
+}
+
+model ExerciseLog {
+  id              Int               @id @default(autoincrement())
+  userId          Int               @map("patient_id")
+  logDate         DateTime          @map("log_date") @db.Date
+  exerciseType    String            @map("exercise_type") @db.VarChar(100)
+  durationMinutes Int               @default(0) @map("duration_minutes")
+  caloriesBurned  Decimal           @default(0.00) @map("calories_burned") @db.Decimal(8, 2)
+  intensity       ExerciseIntensity @default(moderate)
+  notes           String?
+  createdAt       DateTime          @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("exercise_logs")
 }
 
 model WaterLog {
@@ -436,9 +460,25 @@ model WaterLog {
   ml      Int?
   logDate DateTime @default(now()) @map("log_date") @db.Date
 
-  user    User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("water_logs")
+}
+
+model Payment {
+  id                    Int      @id @default(autoincrement())
+  userId                Int      @map("user_id")
+  paymentType           String   @map("payment_type") @db.VarChar(20)
+  stripePaymentIntentId String   @unique @map("stripe_payment_intent_id") @db.VarChar(100)
+  amount                Int
+  currency              String   @default("gbp") @db.VarChar(3)
+  status                String   @default("succeeded") @db.VarChar(30)
+  description           String?
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
 }
 
 model Message {
@@ -450,8 +490,8 @@ model Message {
   isEmergency Boolean  @default(false) @map("is_emergency")
   createdAt   DateTime @default(now()) @map("created_at")
 
-  sender      User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver    User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
 
   @@map("messages")
 }
@@ -466,7 +506,7 @@ model Notification {
   link      String?          @db.VarChar(500)
   createdAt DateTime         @default(now()) @map("created_at")
 
-  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
 }
@@ -479,24 +519,24 @@ model ClinicalNote {
   content   String
   createdAt DateTime @default(now()) @map("created_at")
 
-  patient   User @relation("PatientNotes", fields: [patientId], references: [id], onDelete: Cascade)
-  doctor    User @relation("DoctorNotes", fields: [doctorId], references: [id], onDelete: Cascade)
+  patient User @relation("PatientNotes", fields: [patientId], references: [id], onDelete: Cascade)
+  doctor  User @relation("DoctorNotes", fields: [doctorId], references: [id], onDelete: Cascade)
 
   @@map("clinical_notes")
 }
 
 model FamilyHistory {
-  id             Int      @id @default(autoincrement())
-  userId         Int      @map("user_id")
-  relation       String?  @db.VarChar(50)
-  relationName   String?  @map("relation_name") @db.VarChar(255)
-  conditionName  String   @map("condition_name") @db.VarChar(255)
-  diagnosisYear  Int?     @map("diagnosis_year")
-  yearDeceased   Int?     @map("year_deceased")
-  notes          String?
-  createdAt      DateTime @default(now()) @map("created_at")
+  id            Int      @id @default(autoincrement())
+  userId        Int      @map("user_id")
+  relation      String?  @db.VarChar(50)
+  relationName  String?  @map("relation_name") @db.VarChar(255)
+  conditionName String   @map("condition_name") @db.VarChar(255)
+  diagnosisYear Int?     @map("diagnosis_year")
+  yearDeceased  Int?     @map("year_deceased")
+  notes         String?
+  createdAt     DateTime @default(now()) @map("created_at")
 
-  user           User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("family_history")
 }
@@ -508,7 +548,7 @@ model PatientQuestionnaire {
   completedAt DateTime? @map("completed_at")
   startedAt   DateTime  @default(now()) @map("started_at")
 
-  patient     User @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patient User @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   @@map("patient_questionnaire")
 }
@@ -520,7 +560,7 @@ model QuestionnaireAnswer {
   answer      String?
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
 
-  patient     User @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patient User @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   @@unique([patientId, questionKey])
   @@map("patient_questionnaire_answers")
@@ -538,7 +578,7 @@ model Document {
   fileSize    Int?     @map("file_size")
   createdAt   DateTime @default(now()) @map("created_at")
 
-  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("documents")
 }
@@ -554,7 +594,7 @@ model IngredientScan {
   tip         String?
   createdAt   DateTime   @default(now()) @map("created_at")
 
-  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("ingredient_scans")
 }
@@ -580,8 +620,8 @@ model HealthAlert {
   isResolved Boolean       @default(false) @map("is_resolved")
   createdAt  DateTime      @default(now()) @map("created_at")
 
-  patient    User @relation("PatientAlerts", fields: [patientId], references: [id], onDelete: Cascade)
-  doctor     User? @relation("DoctorAlerts", fields: [doctorId], references: [id])
+  patient User  @relation("PatientAlerts", fields: [patientId], references: [id], onDelete: Cascade)
+  doctor  User? @relation("DoctorAlerts", fields: [doctorId], references: [id])
 
   @@map("health_alerts")
 }
@@ -627,15 +667,15 @@ model GeneticDisease {
 }
 
 model DoctorSchedule {
-  id          Int      @id @default(autoincrement())
-  doctorId    Int      @map("doctor_id")
-  dayOfWeek   Int      @map("day_of_week") @db.SmallInt
-  startTime   DateTime? @map("start_time") @db.Time
-  endTime     DateTime? @map("end_time") @db.Time
-  isAvailable Boolean  @default(true) @map("is_available")
-  slotDuration Int     @default(30) @map("slot_duration")
+  id           Int       @id @default(autoincrement())
+  doctorId     Int       @map("doctor_id")
+  dayOfWeek    Int       @map("day_of_week") @db.SmallInt
+  startTime    DateTime? @map("start_time") @db.Time
+  endTime      DateTime? @map("end_time") @db.Time
+  isAvailable  Boolean   @default(true) @map("is_available")
+  slotDuration Int       @default(30) @map("slot_duration")
 
-  doctor      Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  doctor Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
 
   @@map("doctor_schedule")
 }

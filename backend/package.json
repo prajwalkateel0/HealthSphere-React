@@ -4,8 +4,8 @@
   "description": "HealthSphere API Server",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "build": "npx prisma generate && npx prisma migrate deploy",
+    "start": "npx prisma migrate deploy && node src/server.js",
+    "build": "npx prisma generate",
     "dev": "nodemon src/server.js",
     "db:migrate": "npx prisma migrate dev",
     "db:generate": "npx prisma generate",

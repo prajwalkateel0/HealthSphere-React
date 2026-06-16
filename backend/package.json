@@ -10,6 +10,7 @@
     "db:migrate": "npx prisma migrate dev",
     "db:generate": "npx prisma generate",
     "db:seed": "node seed.js",
+    "db:import:php": "node scripts/import-php-dump.js",
     "db:studio": "npx prisma studio"
   },
   "dependencies": {

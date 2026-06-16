@@ -5,10 +5,10 @@ import '../assets/auth.css';
 
 const DEMO_ACCOUNTS = [
   { name: 'Emma Patel', email: 'emma.patel007@gmail.com', role: 'Patient', icon: '🧑', bg: '#DBEAFE', badge: { bg: '#DBEAFE', color: '#1E40AF' } },
-  { name: 'Dr Emma Hall', email: 'doctor@healthsphere.com', role: 'Doctor', icon: '👩‍⚕️', bg: '#DCFCE7', badge: { bg: '#DCFCE7', color: '#166534' } },
-  { name: 'Admin User', email: 'admin@healthsphere.com', role: 'Admin', icon: '🛡️', bg: '#FEF3C7', badge: { bg: '#FEF3C7', color: '#92400E' } },
-  { name: 'William Jayson', email: 'govt@healthsphere.com', role: 'Gov. Analyst', icon: '🏛️', bg: '#EDE9FE', badge: { bg: '#EDE9FE', color: '#5B21B6' } },
-  { name: 'Alex Pharmacy', email: 'pharmacy@healthsphere.com', role: 'Medical Team', icon: '💊', bg: '#E0F2FE', badge: { bg: '#E0F2FE', color: '#0369A1' } },
+  { name: 'Dr. Jessica Johns', email: 'jessica.johns@leicesterhospital.nhs.uk', role: 'Doctor', icon: '👩‍⚕️', bg: '#DCFCE7', badge: { bg: '#DCFCE7', color: '#166534' } },
+  { name: 'System Admin', email: 'admin@healthsphere.info', role: 'Admin', icon: '🛡️', bg: '#FEF3C7', badge: { bg: '#FEF3C7', color: '#92400E' } },
+  { name: 'W. Jayson', email: 'w.jayson@dhsc.gov.uk', role: 'Gov. Analyst', icon: '🏛️', bg: '#EDE9FE', badge: { bg: '#EDE9FE', color: '#5B21B6' } },
+  { name: 'Medical Team', email: 'medteam@healthsphere.nhs.uk', role: 'Pharmacy', icon: '💊', bg: '#F0FDF4', badge: { bg: '#F0FDF4', color: '#166534' } },
 ];
 
 export default function Login() {

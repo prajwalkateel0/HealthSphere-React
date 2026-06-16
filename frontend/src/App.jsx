@@ -56,12 +56,17 @@ import GovAnalytics from './pages/government/Analytics';
 import GovAlerts from './pages/government/Alerts';
 import GovMap from './pages/government/Map';
 
+// Medical Team pages
+import MedicalTeamDashboard from './pages/medical-team/Dashboard';
+import MedicineQueue from './pages/medical-team/MedicineQueue';
+import MedicalTeamProfile from './pages/medical-team/Profile';
+
 function ProtectedRoute({ children, roles }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="loading" style={{ minHeight: '100vh' }}><div className="spinner" /></div>;
   if (!user) return <Navigate to="/login" replace />;
   if (roles && !roles.includes(user.role)) {
-    const routes = { patient: '/patient/dashboard', doctor: '/doctor/dashboard', admin: '/admin/dashboard', government: '/government/dashboard' };
+    const routes = { patient: '/patient/dashboard', doctor: '/doctor/dashboard', admin: '/admin/dashboard', government: '/government/dashboard', pharmacy: '/medical-team/dashboard' };
     return <Navigate to={routes[user.role] || '/login'} replace />;
   }
   return <Layout>{children}</Layout>;
@@ -72,7 +77,7 @@ function StandaloneRoute({ children, roles }) {
   if (loading) return <div className="loading" style={{ minHeight: '100vh' }}><div className="spinner" /></div>;
   if (!user) return <Navigate to="/login" replace />;
   if (roles && !roles.includes(user.role)) {
-    const routes = { patient: '/patient/dashboard', doctor: '/doctor/dashboard', admin: '/admin/dashboard', government: '/government/dashboard' };
+    const routes = { patient: '/patient/dashboard', doctor: '/doctor/dashboard', admin: '/admin/dashboard', government: '/government/dashboard', pharmacy: '/medical-team/dashboard' };
     return <Navigate to={routes[user.role] || '/login'} replace />;
   }
   return children;
@@ -136,6 +141,11 @@ function AppRoutes() {
       <Route path="/government/analytics" element={<ProtectedRoute roles={['government']}><GovAnalytics /></ProtectedRoute>} />
       <Route path="/government/alerts" element={<ProtectedRoute roles={['government']}><GovAlerts /></ProtectedRoute>} />
       <Route path="/government/map" element={<ProtectedRoute roles={['government']}><GovMap /></ProtectedRoute>} />
+
+      {/* Medical Team */}
+      <Route path="/medical-team/dashboard" element={<ProtectedRoute roles={['pharmacy']}><MedicalTeamDashboard /></ProtectedRoute>} />
+      <Route path="/medical-team/medicine-queue" element={<ProtectedRoute roles={['pharmacy']}><MedicineQueue /></ProtectedRoute>} />
+      <Route path="/medical-team/profile" element={<ProtectedRoute roles={['pharmacy']}><MedicalTeamProfile /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

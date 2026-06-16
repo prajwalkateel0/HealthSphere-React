@@ -54,7 +54,13 @@ const govNav = [
   { to: '/government/map', icon: '🗺️', label: 'Regional Map' },
 ];
 
-const navMap = { patient: patientNav, doctor: doctorNav, admin: adminNav, government: govNav };
+const medicalTeamNav = [
+  { to: '/medical-team/dashboard', icon: '📊', label: 'Dashboard' },
+  { to: '/medical-team/medicine-queue', icon: '💊', label: 'Medicine Queue' },
+  { to: '/medical-team/profile', icon: '👤', label: 'My Profile' },
+];
+
+const navMap = { patient: patientNav, doctor: doctorNav, admin: adminNav, government: govNav, pharmacy: medicalTeamNav };
 
 export default function Sidebar() {
   const { user, logout } = useAuth();

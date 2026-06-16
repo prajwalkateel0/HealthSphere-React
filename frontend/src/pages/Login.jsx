@@ -8,6 +8,7 @@ const DEMO_ACCOUNTS = [
   { name: 'Dr Emma Hall', email: 'doctor@healthsphere.com', role: 'Doctor', icon: '👩‍⚕️', bg: '#DCFCE7', badge: { bg: '#DCFCE7', color: '#166534' } },
   { name: 'Admin User', email: 'admin@healthsphere.com', role: 'Admin', icon: '🛡️', bg: '#FEF3C7', badge: { bg: '#FEF3C7', color: '#92400E' } },
   { name: 'William Jayson', email: 'govt@healthsphere.com', role: 'Gov. Analyst', icon: '🏛️', bg: '#EDE9FE', badge: { bg: '#EDE9FE', color: '#5B21B6' } },
+  { name: 'Alex Pharmacy', email: 'pharmacy@healthsphere.com', role: 'Medical Team', icon: '💊', bg: '#E0F2FE', badge: { bg: '#E0F2FE', color: '#0369A1' } },
 ];
 
 export default function Login() {
@@ -25,7 +26,7 @@ export default function Login() {
     setError(null);
     try {
       const user = await login(email, password);
-      const routes = { patient: '/patient/dashboard', doctor: '/doctor/dashboard', admin: '/admin/dashboard', government: '/government/dashboard' };
+      const routes = { patient: '/patient/dashboard', doctor: '/doctor/dashboard', admin: '/admin/dashboard', government: '/government/dashboard', pharmacy: '/medical-team/dashboard' };
       navigate(routes[user.role] || '/patient/dashboard');
     } catch (err) {
       setError(err.response?.data?.error || 'Invalid email or password');

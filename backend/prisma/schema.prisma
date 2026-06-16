@@ -12,6 +12,7 @@ enum Role {
   doctor
   admin
   government
+  pharmacy
 }
 
 enum UserStatus {

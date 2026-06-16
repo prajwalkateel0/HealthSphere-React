@@ -78,19 +78,96 @@ exports.getPendingApprovals = async (req, res) => {
 
 exports.getAnalytics = async (req, res) => {
   try {
-    const topDoctors = await prisma.user.findMany({
-      where: { role: 'doctor', status: 'active' },
-      include: {
-        doctor: { select: { specialization: true, rating: true } },
-        doctorAppts: { select: { id: true } },
-      },
-      take: 10,
-    });
-    const formatted = topDoctors
-      .map(d => ({ name: d.name, specialization: d.doctor?.specialization, rating: d.doctor?.rating, total_appointments: d.doctorAppts.length }))
-      .sort((a, b) => b.total_appointments - a.total_appointments);
+    const now = new Date();
+    const year = now.getFullYear();
+    const yearStart = new Date(year, 0, 1);
+    const yearEnd = new Date(year + 1, 0, 1);
+    const monthStart = new Date(year, now.getMonth(), 1);
+    const monthEnd = new Date(year, now.getMonth() + 1, 1);
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(now.getDate() - 6);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
 
-    res.json({ topDoctors: formatted, userGrowth: [], apptTrends: [] });
+    const [
+      totalPatients, totalDoctors, totalAppts, apptThisMonth,
+      activePrescriptions, criticalCases, totalMessages, totalDocuments,
+      statusGroups, recordGroups, roleGroups, medGroups,
+      patientsThisYear, apptsThisYear, recentUsers,
+      topDoctorsRaw, recentLogs,
+    ] = await Promise.all([
+      prisma.user.count({ where: { role: 'patient' } }),
+      prisma.user.count({ where: { role: 'doctor', status: 'active' } }),
+      prisma.appointment.count(),
+      prisma.appointment.count({ where: { appointmentDate: { gte: monthStart, lt: monthEnd } } }),
+      prisma.prescription.count({ where: { status: 'active' } }),
+      prisma.medicalRecord.count({ where: { status: 'critical' } }),
+      prisma.message.count(),
+      prisma.document.count(),
+      prisma.appointment.groupBy({ by: ['status'], _count: { id: true } }),
+      prisma.medicalRecord.groupBy({ by: ['status'], _count: { id: true } }),
+      prisma.user.groupBy({ by: ['role'], _count: { id: true } }),
+      prisma.prescription.groupBy({ by: ['medicationName'], _count: { id: true }, orderBy: { _count: { id: 'desc' } }, take: 6 }),
+      prisma.user.findMany({ where: { role: 'patient', createdAt: { gte: yearStart, lt: yearEnd } }, select: { createdAt: true } }),
+      prisma.appointment.findMany({ where: { appointmentDate: { gte: yearStart, lt: yearEnd } }, select: { appointmentDate: true } }),
+      prisma.user.findMany({ where: { createdAt: { gte: sevenDaysAgo } }, select: { createdAt: true } }),
+      prisma.user.findMany({
+        where: { role: 'doctor', status: 'active' },
+        include: { doctor: { select: { specialization: true, rating: true, hospital: true } }, doctorAppts: { select: { id: true } } },
+        take: 10,
+      }),
+      prisma.accessLog.findMany({ orderBy: { createdAt: 'desc' }, take: 10 }),
+    ]);
+
+    const regByMonth = Array.from({ length: 12 }, (_, i) =>
+      patientsThisYear.filter(u => new Date(u.createdAt).getMonth() === i).length
+    );
+    const apptByMonth = Array.from({ length: 12 }, (_, i) =>
+      apptsThisYear.filter(a => new Date(a.appointmentDate).getMonth() === i).length
+    );
+
+    const dailyLabels = [];
+    const dailyUsers = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      dailyLabels.push(d.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit' }));
+      dailyUsers.push(recentUsers.filter(u => {
+        const ud = new Date(u.createdAt);
+        return ud.getDate() === d.getDate() && ud.getMonth() === d.getMonth() && ud.getFullYear() === d.getFullYear();
+      }).length);
+    }
+
+    const topDoctors = topDoctorsRaw
+      .map(d => ({ name: d.name, specialization: d.doctor?.specialization, hospital: d.doctor?.hospital, rating: parseFloat(d.doctor?.rating) || 0, total_appointments: d.doctorAppts.length }))
+      .sort((a, b) => b.total_appointments - a.total_appointments)
+      .slice(0, 5);
+
+    const logUserIds = [...new Set(recentLogs.map(l => l.userId).filter(Boolean))];
+    const logUsers = logUserIds.length
+      ? await prisma.user.findMany({ where: { id: { in: logUserIds } }, select: { id: true, name: true, role: true } })
+      : [];
+    const logUserMap = Object.fromEntries(logUsers.map(u => [u.id, u]));
+    const recentActivity = recentLogs.map(l => ({
+      user_name: logUserMap[l.userId]?.name || 'Unknown',
+      role: logUserMap[l.userId]?.role || '',
+      action: l.action,
+      ip_address: l.ipAddress,
+      created_at: l.createdAt,
+    }));
+
+    res.json({
+      stats: { totalPatients, totalDoctors, totalAppts, apptThisMonth, activePrescriptions, criticalCases, totalMessages, totalDocuments },
+      regByMonth,
+      apptByMonth,
+      statusDist: Object.fromEntries(statusGroups.map(g => [g.status, g._count.id])),
+      recordDist: Object.fromEntries(recordGroups.map(g => [g.status, g._count.id])),
+      roleDist: Object.fromEntries(roleGroups.map(g => [g.role, g._count.id])),
+      medDist: Object.fromEntries(medGroups.map(g => [g.medicationName, g._count.id])),
+      topDoctors,
+      dailyLabels,
+      dailyUsers,
+      recentActivity,
+    });
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 

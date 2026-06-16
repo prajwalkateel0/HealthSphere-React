@@ -96,8 +96,34 @@ exports.getAnalytics = async (req, res) => {
 
 exports.getAccessLogs = async (req, res) => {
   try {
-    const rows = await prisma.accessLog.findMany({ orderBy: { createdAt: 'desc' }, take: 200 });
-    res.json(rows);
+    const { search, role, action } = req.query;
+
+    const logs = await prisma.accessLog.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+      where: action ? { action: { contains: action, mode: 'insensitive' } } : {},
+    });
+
+    const userIds = [...new Set(logs.map(l => l.userId).filter(Boolean))];
+    const users = await prisma.user.findMany({
+      where: {
+        id: { in: userIds },
+        ...(role ? { role } : {}),
+        ...(search ? { OR: [{ name: { contains: search, mode: 'insensitive' } }, { email: { contains: search, mode: 'insensitive' } }] } : {}),
+      },
+      select: { id: true, name: true, email: true, role: true },
+    });
+    const userMap = Object.fromEntries(users.map(u => [u.id, u]));
+
+    const result = logs
+      .map(l => {
+        const u = userMap[l.userId];
+        if (!u) return null;
+        return { id: l.id, user_name: u.name, email: u.email, role: u.role, action: l.action, ip_address: l.ipAddress, created_at: l.createdAt, accessed_patient_id: l.accessedPatientId };
+      })
+      .filter(Boolean);
+
+    res.json(result);
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 

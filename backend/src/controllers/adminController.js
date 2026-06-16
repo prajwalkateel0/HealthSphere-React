@@ -3,15 +3,37 @@ const mailer = require('../utils/mailer');
 
 exports.getDashboard = async (req, res) => {
   try {
-    const [patients, doctors, appointments, pending, foodItems, diseases] = await Promise.all([
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const [patients, doctors, appointments, pending, foodItems, diseases, pendingDoctors, recentUsersRaw, recentLogsRaw] = await Promise.all([
       prisma.user.count({ where: { role: 'patient' } }),
       prisma.user.count({ where: { role: 'doctor', status: 'active' } }),
-      prisma.appointment.count({ where: { appointmentDate: { gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) } } }),
+      prisma.appointment.count({ where: { appointmentDate: { gte: thirtyDaysAgo } } }),
       prisma.user.count({ where: { status: 'pending' } }),
       prisma.foodDatabase.count(),
       prisma.geneticDisease.count(),
+      prisma.doctor.count({ where: { hcpcVerified: false } }),
+      prisma.user.findMany({ orderBy: { createdAt: 'desc' }, take: 5, select: { id: true, name: true, email: true, role: true, status: true, nhsId: true, createdAt: true } }),
+      prisma.accessLog.findMany({ orderBy: { createdAt: 'desc' }, take: 8 }),
     ]);
-    res.json({ patients, doctors, appointments, pending, foodItems, diseases });
+
+    // Join access logs with users
+    const logUserIds = [...new Set(recentLogsRaw.map(l => l.userId).filter(Boolean))];
+    const logUsers = logUserIds.length
+      ? await prisma.user.findMany({ where: { id: { in: logUserIds } }, select: { id: true, name: true, role: true } })
+      : [];
+    const logUserMap = Object.fromEntries(logUsers.map(u => [u.id, u]));
+    const recentLogs = recentLogsRaw.map(l => ({
+      id: l.id,
+      user_name: logUserMap[l.userId]?.name || 'Unknown',
+      role: logUserMap[l.userId]?.role || '',
+      action: l.action,
+      ip_address: l.ipAddress,
+      created_at: l.createdAt,
+    }));
+
+    res.json({ patients, doctors, appointments, pending, foodItems, diseases, pendingDoctors, recentUsers: recentUsersRaw, recentLogs });
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 

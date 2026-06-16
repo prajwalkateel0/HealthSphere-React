@@ -324,7 +324,11 @@ exports.deleteFoodItem = async (req, res) => {
 
 exports.getDiseases = async (req, res) => {
   try {
-    const rows = await prisma.geneticDisease.findMany({ orderBy: { name: 'asc' } });
+    const { search } = req.query;
+    const rows = await prisma.geneticDisease.findMany({
+      where: search ? { name: { contains: search, mode: 'insensitive' } } : {},
+      orderBy: { name: 'asc' },
+    });
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
@@ -333,9 +337,20 @@ exports.addDisease = async (req, res) => {
   try {
     const { name, inheritance_type, symptoms, food_triggers, exercise_guidance, care_plan } = req.body;
     const d = await prisma.geneticDisease.create({
-      data: { name, inheritanceType: inheritance_type, symptoms, foodTriggers: food_triggers, exerciseGuidance: exercise_guidance, carePlan: care_plan },
+      data: { name, inheritanceType: inheritance_type, symptoms, foodTriggers: food_triggers, exerciseGuidance: exercise_guidance, carePlan: care_plan || 'standard' },
     });
     res.status(201).json(d);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+exports.updateDisease = async (req, res) => {
+  try {
+    const { name, inheritance_type, symptoms, food_triggers, exercise_guidance, care_plan } = req.body;
+    const d = await prisma.geneticDisease.update({
+      where: { id: +req.params.id },
+      data: { name, inheritanceType: inheritance_type, symptoms, foodTriggers: food_triggers, exerciseGuidance: exercise_guidance, carePlan: care_plan },
+    });
+    res.json(d);
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
@@ -344,6 +359,50 @@ exports.deleteDisease = async (req, res) => {
     await prisma.geneticDisease.delete({ where: { id: +req.params.id } });
     res.json({ message: 'Deleted' });
   } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+exports.searchNLM = async (req, res) => {
+  try {
+    const axios = require('axios');
+    const { q, type, slug } = req.query;
+    const NCBI = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils';
+    const opts = { timeout: 12000 };
+
+    if (type === 'detail') {
+      const { data } = await axios.get(`${NCBI}/esummary.fcgi?db=medgen&id=${encodeURIComponent(slug)}&retmode=json`, opts);
+      const uid = data.result?.uids?.[0];
+      if (!uid) return res.json({ error: 'Condition not found' });
+      const item = data.result[uid];
+      const defs  = item.definitions?.find(d => d.source === 'MSH') || item.definitions?.[0];
+      return res.json({
+        name:              item.title || '',
+        inheritance_label: null,
+        genes:             null,
+        synonyms:          item.aliases?.slice(0, 4).join(', ') || null,
+        symptoms:          defs?.definition || item.definition || null,
+        summary:           item.semantic_type || null,
+        url:               `https://www.ncbi.nlm.nih.gov/medgen/${uid}`,
+        slug:              uid,
+      });
+    }
+
+    if (!q) return res.json({ results: [] });
+    const { data: sd } = await axios.get(`${NCBI}/esearch.fcgi?db=medgen&term=${encodeURIComponent(q)}+[Disease/Phenotype]&retmode=json&retmax=12`, opts);
+    const ids = sd.esearchresult?.idlist || [];
+    if (!ids.length) return res.json({ results: [] });
+
+    const { data: sumd } = await axios.get(`${NCBI}/esummary.fcgi?db=medgen&id=${ids.join(',')}&retmode=json`, opts);
+    const uids = sumd.result?.uids || [];
+    const results = uids.map(uid => {
+      const item = sumd.result[uid];
+      const defs  = item.definitions?.find(d => d.source === 'MSH') || item.definitions?.[0];
+      return { name: item.title, snippet: defs?.definition?.slice(0, 150) || 'Click to load full details...', slug: uid };
+    }).filter(r => r.name);
+
+    res.json({ results });
+  } catch (err) {
+    res.json({ error: 'MedlinePlus search failed: ' + err.message });
+  }
 };
 
 exports.getSettings = async (req, res) => {

@@ -1,86 +1,430 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../../api/axios';
 
-export default function Diseases() {
-  const [diseases, setDiseases] = useState([]);
-  const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ name: '', inheritance_type: '', symptoms: '', food_triggers: '', exercise_guidance: '', care_plan: '' });
-  const [expanded, setExpanded] = useState(null);
+const CARE_PLAN_BADGE = {
+  intensive:  'badge-danger',
+  moderate:   'badge-warning',
+  standard:   'badge-info',
+  preventive: 'badge-success',
+};
 
-  const load = () => api.get('/admin/diseases').then(r => setDiseases(r.data));
-  useEffect(load, []);
+const INHERITANCE_OPTIONS = [
+  { value: 'complex',              label: 'Complex / Multifactorial' },
+  { value: 'autosomal_dominant',   label: 'Autosomal Dominant' },
+  { value: 'autosomal_recessive',  label: 'Autosomal Recessive' },
+  { value: 'x_linked',             label: 'X-Linked' },
+  { value: 'mitochondrial',        label: 'Mitochondrial' },
+];
 
-  const add = async (e) => {
+const CARE_PLAN_OPTIONS = ['standard', 'moderate', 'intensive', 'preventive'];
+
+const EMPTY_FORM = { name: '', inheritance_type: 'complex', symptoms: '', food_triggers: '', exercise_guidance: '', care_plan: 'standard' };
+
+function trunc(str, n) {
+  if (!str) return '—';
+  return str.length > n ? str.slice(0, n) + '…' : str;
+}
+
+/* ── Disease Form Modal ────────────────────────────────────────────── */
+function DiseaseModal({ initial = EMPTY_FORM, onSave, onClose, title }) {
+  const [form, setForm] = useState(initial);
+  const [saving, setSaving] = useState(false);
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    await api.post('/admin/diseases', form);
-    load(); setShowModal(false);
-    setForm({ name: '', inheritance_type: '', symptoms: '', food_triggers: '', exercise_guidance: '', care_plan: '' });
+    setSaving(true);
+    try { await onSave(form); }
+    finally { setSaving(false); }
   };
 
-  const del = async (id) => {
-    if (!confirm('Delete this disease?')) return;
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 620 }}>
+        <div className="modal-header" style={{ background: 'var(--primary)', borderRadius: '12px 12px 0 0' }}>
+          <h3 style={{ color: '#fff' }}><i className="fas fa-dna" style={{ marginRight: 8 }}></i>{title}</h3>
+          <button className="modal-close" style={{ color: '#fff' }} onClick={onClose}>&times;</button>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="modal-body">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label className="form-label">Disease Name *</label>
+                <input className="form-control" required value={form.name} onChange={e => set('name', e.target.value)} />
+              </div>
+              <div>
+                <label className="form-label">Inheritance Type</label>
+                <select className="form-control" value={form.inheritance_type} onChange={e => set('inheritance_type', e.target.value)}>
+                  {INHERITANCE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="form-label">Care Plan</label>
+                <select className="form-control" value={form.care_plan} onChange={e => set('care_plan', e.target.value)}>
+                  {CARE_PLAN_OPTIONS.map(o => <option key={o} value={o}>{o.charAt(0).toUpperCase() + o.slice(1)}</option>)}
+                </select>
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label className="form-label">Key Symptoms</label>
+                <textarea className="form-control" rows={3} value={form.symptoms} onChange={e => set('symptoms', e.target.value)} />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label className="form-label">Food Triggers / Related Genes</label>
+                <textarea className="form-control" rows={2} value={form.food_triggers} onChange={e => set('food_triggers', e.target.value)} />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label className="form-label">Exercise Guidance</label>
+                <input className="form-control" value={form.exercise_guidance} onChange={e => set('exercise_guidance', e.target.value)} />
+              </div>
+            </div>
+            <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text-muted)' }}>
+              <i className="fas fa-info-circle"></i> Data may be sourced from MedlinePlus Genetics / NCBI MedGen
+            </div>
+          </div>
+          <div className="modal-footer">
+            <button type="submit" className="btn btn-primary" disabled={saving} style={{ flex: 1, justifyContent: 'center' }}>
+              <i className="fas fa-download"></i> {saving ? 'Saving…' : 'Save to Registry'}
+            </button>
+            <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ── NLM Detail Panel ──────────────────────────────────────────────── */
+function NLMDetail({ detail, onImport, onClose }) {
+  if (!detail) return null;
+  return (
+    <div className="card" style={{ marginTop: 16 }}>
+      <div className="card-header">
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 20 }}>🧬</span> {detail.name}
+          <span className="badge badge-purple" style={{ marginLeft: 4 }}>MedlinePlus Genetics</span>
+        </h3>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {detail.url && <a href={detail.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#1565C0' }}>View on NLM <i className="fas fa-external-link-alt"></i></a>}
+          <button className="modal-close" onClick={onClose}>&times;</button>
+        </div>
+      </div>
+      <div className="card-body">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
+          {[
+            { label: 'Inheritance', value: detail.inheritance_label },
+            { label: 'Related Genes', value: detail.genes, purple: true },
+            { label: 'Also Known As', value: detail.synonyms },
+          ].map(({ label, value, purple }) => (
+            <div key={label} style={{ background: 'var(--bg)', borderRadius: 10, padding: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
+              <div style={{ fontWeight: 700, color: purple ? '#7C3AED' : 'var(--primary)', fontSize: 13 }}>{value || '—'}</div>
+            </div>
+          ))}
+        </div>
+        {detail.symptoms && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--primary)', marginBottom: 6 }}>
+              <i className="fas fa-stethoscope" style={{ color: '#1565C0', marginRight: 6 }}></i>Key Symptoms / Definition
+            </div>
+            <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, background: 'var(--bg)', borderRadius: 8, padding: 12, margin: 0 }}>{detail.symptoms}</p>
+          </div>
+        )}
+        <button
+          className="btn btn-primary"
+          style={{ background: 'linear-gradient(135deg,#7C3AED,#4285F4)', border: 'none' }}
+          onClick={() => onImport(detail)}
+        >
+          <i className="fas fa-download"></i> Import to Registry
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Main Component ────────────────────────────────────────────────── */
+export default function Diseases() {
+  const [tab, setTab]           = useState('local');
+  const [diseases, setDiseases] = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [search, setSearch]     = useState('');
+
+  // Modal state
+  const [modal, setModal]       = useState(null); // null | { mode:'add'|'edit', initial }
+
+  // NLM state
+  const [nlmQuery, setNlmQuery]   = useState('');
+  const [nlmResults, setNlmResults] = useState([]);
+  const [nlmDetail, setNlmDetail]   = useState(null);
+  const [nlmLoading, setNlmLoading] = useState(false);
+  const [nlmDetailLoading, setNlmDetailLoading] = useState(false);
+  const [nlmError, setNlmError]     = useState('');
+
+  const load = useCallback(() => {
+    setLoading(true);
+    api.get('/admin/diseases', { params: { search } }).then(r => setDiseases(r.data)).finally(() => setLoading(false));
+  }, [search]);
+
+  useEffect(() => { load(); }, [load]);
+
+  /* ── CRUD ── */
+  const handleSave = async (form) => {
+    if (modal?.mode === 'edit') {
+      await api.put(`/admin/diseases/${modal.id}`, form);
+    } else {
+      await api.post('/admin/diseases', form);
+    }
+    setModal(null);
+    load();
+  };
+
+  const del = async (id, name) => {
+    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
     await api.delete(`/admin/diseases/${id}`);
     load();
   };
 
+  /* ── NLM Search ── */
+  const searchNLM = async () => {
+    if (!nlmQuery.trim()) return;
+    setNlmResults([]); setNlmDetail(null); setNlmError(''); setNlmLoading(true);
+    try {
+      const r = await api.get('/admin/diseases/nlm-search', { params: { q: nlmQuery } });
+      if (r.data.error) setNlmError(r.data.error);
+      else setNlmResults(r.data.results || []);
+    } catch { setNlmError('Network error. Please try again.'); }
+    finally { setNlmLoading(false); }
+  };
+
+  const loadDetail = async (slug, name) => {
+    setNlmDetail({ name, loading: true }); setNlmDetailLoading(true);
+    try {
+      const r = await api.get('/admin/diseases/nlm-search', { params: { type: 'detail', slug } });
+      if (r.data.error) setNlmDetail({ name, error: r.data.error });
+      else setNlmDetail(r.data);
+    } catch { setNlmDetail({ name, error: 'Failed to load details.' }); }
+    finally { setNlmDetailLoading(false); }
+  };
+
+  const openImport = (detail) => {
+    setModal({
+      mode: 'add',
+      initial: {
+        name: detail.name || '',
+        inheritance_type: detail.inheritance || 'complex',
+        symptoms: detail.symptoms || '',
+        food_triggers: detail.genes || '',
+        exercise_guidance: '',
+        care_plan: 'standard',
+      },
+    });
+  };
+
+  /* ── Tab styles ── */
+  const tabStyle = (t) => ({
+    padding: '10px 20px', fontSize: 13, fontWeight: 700,
+    border: 'none', background: 'none', cursor: 'pointer',
+    color: tab === t ? '#1565C0' : 'var(--text-muted)',
+    borderBottom: tab === t ? '2px solid #1565C0' : '2px solid transparent',
+    marginBottom: -2,
+  });
+
   return (
     <div>
-      <div className="flex-between mb-4">
-        <h3 style={{ color: 'var(--text-muted)' }}>{diseases.length} conditions in registry</h3>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ Add Disease</button>
-      </div>
-
-      <div className="grid grid-auto gap-4">
-        {diseases.map(d => (
-          <div className="card" key={d.id}>
-            <div className="card-header" style={{ cursor: 'pointer' }} onClick={() => setExpanded(expanded === d.id ? null : d.id)}>
-              <div>
-                <h3>🧬 {d.name}</h3>
-                {d.inheritance_type && <span className="badge badge-purple">{d.inheritance_type}</span>}
-              </div>
-              <button className="btn btn-ghost btn-sm">{expanded === d.id ? '▲' : '▼'}</button>
-            </div>
-            {expanded === d.id && (
-              <div className="card-body" style={{ display: 'grid', gap: 10 }}>
-                {[
-                  ['Symptoms', d.symptoms],
-                  ['Food Triggers', d.food_triggers],
-                  ['Exercise Guidance', d.exercise_guidance],
-                  ['Care Plan', d.care_plan],
-                ].filter(([,v]) => v).map(([label, value]) => (
-                  <div key={label} style={{ padding: '8px 12px', background: 'var(--bg)', borderRadius: 8 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
-                    <div style={{ fontSize: 13 }}>{value}</div>
-                  </div>
-                ))}
-                <button className="btn btn-sm btn-danger" onClick={() => del(d.id)}>Delete</button>
-              </div>
-            )}
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--primary)' }}>
+            <i className="fas fa-dna" style={{ color: '#1565C0', marginRight: 8 }}></i>Genetic Diseases Registry
           </div>
-        ))}
-        {!diseases.length && (
-          <div className="card"><div className="empty-state"><div className="empty-icon">🧬</div><p>No diseases in registry</p></div></div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{diseases.length} conditions</div>
+        </div>
+        {tab === 'local' && (
+          <button className="btn btn-primary" onClick={() => setModal({ mode: 'add', initial: EMPTY_FORM })}>
+            <i className="fas fa-plus"></i> Add Disease
+          </button>
         )}
       </div>
 
-      {showModal && (
-        <div className="modal-overlay">
-          <div className="modal" style={{ maxWidth: 600 }}>
-            <div className="modal-header"><h3>Add Genetic Disease</h3><button className="modal-close" onClick={() => setShowModal(false)}>✕</button></div>
-            <form onSubmit={add}>
-              <div className="modal-body">
-                <div className="grid grid-2 gap-2">
-                  <div className="form-group"><label className="form-label">Disease Name *</label><input className="form-control" required value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
-                  <div className="form-group"><label className="form-label">Inheritance Type</label><input className="form-control" placeholder="e.g. Autosomal Dominant" value={form.inheritance_type} onChange={e => setForm({...form, inheritance_type: e.target.value})} /></div>
-                </div>
-                {[['symptoms','Symptoms'],['food_triggers','Food Triggers'],['exercise_guidance','Exercise Guidance'],['care_plan','Care Plan']].map(([key, label]) => (
-                  <div className="form-group" key={key}><label className="form-label">{label}</label><textarea className="form-control" rows={2} value={form[key]} onChange={e => setForm({...form, [key]: e.target.value})} /></div>
-                ))}
-              </div>
-              <div className="modal-footer"><button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button><button type="submit" className="btn btn-primary">Add Disease</button></div>
-            </form>
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '2px solid var(--border)' }}>
+        <button style={tabStyle('local')} onClick={() => setTab('local')}>
+          <i className="fas fa-database"></i> Local Registry&nbsp;
+          <span style={{ background: '#1565C0', color: '#fff', padding: '1px 7px', borderRadius: 10, fontSize: 11 }}>{diseases.length}</span>
+        </button>
+        <button style={tabStyle('nlm')} onClick={() => setTab('nlm')}>
+          <i className="fas fa-flask"></i> Search MedlinePlus&nbsp;
+          <span style={{ background: '#7C3AED', color: '#fff', padding: '1px 7px', borderRadius: 10, fontSize: 11 }}>NLM</span>
+        </button>
+      </div>
+
+      {/* ── LOCAL TAB ── */}
+      {tab === 'local' && (
+        <div className="card">
+          {/* Search bar */}
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+            <input
+              className="form-control"
+              style={{ maxWidth: 320 }}
+              placeholder="🔍 Search diseases..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+
+          <div className="table-wrap">
+            <table style={{ minWidth: 900 }}>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Inheritance</th>
+                  <th>Key Symptoms</th>
+                  <th>Food Triggers</th>
+                  <th>Exercise Guidance</th>
+                  <th>Care Plan</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={7}><div className="loading"><div className="spinner" /></div></td></tr>
+                ) : diseases.length ? diseases.map(d => (
+                  <tr key={d.id}>
+                    <td style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{d.name}</td>
+                    <td style={{ fontSize: 12 }}>
+                      {d.inheritanceType
+                        ? d.inheritanceType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+                        : '—'}
+                    </td>
+                    <td style={{ fontSize: 12, maxWidth: 150 }}>{trunc(d.symptoms, 80)}</td>
+                    <td style={{ fontSize: 12, maxWidth: 120 }}>{trunc(d.foodTriggers, 60)}</td>
+                    <td style={{ fontSize: 12, maxWidth: 130 }}>{trunc(d.exerciseGuidance, 70)}</td>
+                    <td>
+                      {d.carePlan
+                        ? <span className={`badge ${CARE_PLAN_BADGE[d.carePlan] || 'badge-gray'}`}>{d.carePlan.charAt(0).toUpperCase() + d.carePlan.slice(1)}</span>
+                        : <span className="badge badge-gray">—</span>}
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <button
+                          className="btn btn-sm btn-outline"
+                          title="Edit"
+                          onClick={() => setModal({
+                            mode: 'edit', id: d.id,
+                            initial: { name: d.name, inheritance_type: d.inheritanceType || 'complex', symptoms: d.symptoms || '', food_triggers: d.foodTriggers || '', exercise_guidance: d.exerciseGuidance || '', care_plan: d.carePlan || 'standard' },
+                          })}
+                        >
+                          <i className="fas fa-edit"></i>
+                        </button>
+                        <button className="btn btn-sm btn-danger" title="Delete" onClick={() => del(d.id, d.name)}>
+                          <i className="fas fa-trash"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )) : (
+                  <tr><td colSpan={7}><div className="empty-state">No diseases found{search ? ` for "${search}"` : ''}</div></td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
+      )}
+
+      {/* ── NLM TAB ── */}
+      {tab === 'nlm' && (
+        <div>
+          {/* Search input */}
+          <div className="card" style={{ marginBottom: 16 }}>
+            <div className="card-body" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                className="form-control"
+                style={{ flex: 1, maxWidth: 480 }}
+                placeholder="Search: e.g. cystic fibrosis, sickle cell, BRCA..."
+                value={nlmQuery}
+                onChange={e => setNlmQuery(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && searchNLM()}
+              />
+              <button className="btn btn-primary" onClick={searchNLM} disabled={nlmLoading}>
+                <i className={`fas ${nlmLoading ? 'fa-spinner fa-spin' : 'fa-search'}`}></i> Search
+              </button>
+            </div>
+          </div>
+
+          {/* Error */}
+          {nlmError && <div className="alert alert-danger" style={{ marginBottom: 16 }}><i className="fas fa-exclamation-circle"></i> {nlmError}</div>}
+
+          {/* Loading */}
+          {nlmLoading && (
+            <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
+              <i className="fas fa-spinner fa-spin fa-2x"></i>
+              <p style={{ marginTop: 12 }}>Searching MedlinePlus Genetics (NCBI MedGen)...</p>
+            </div>
+          )}
+
+          {/* Empty prompt */}
+          {!nlmLoading && !nlmError && nlmResults.length === 0 && !nlmDetail && (
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
+              <i className="fas fa-dna fa-3x" style={{ marginBottom: 16, opacity: 0.3 }}></i>
+              <p>Search for any genetic condition using the MedlinePlus Genetics (NCBI MedGen) database.</p>
+            </div>
+          )}
+
+          {/* Results grid */}
+          {nlmResults.length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: 16, marginBottom: 16 }}>
+              {nlmResults.map(item => (
+                <div
+                  key={item.slug}
+                  style={{ background: '#fff', border: '1.5px solid var(--border)', borderRadius: 12, padding: 16, cursor: 'pointer', transition: 'border-color 0.2s' }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = '#1565C0'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 8, background: 'linear-gradient(135deg,#7C3AED,#4285F4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 16 }}>🧬</div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--primary)' }}>{item.name}</div>
+                      <div style={{ fontSize: 10, color: '#7C3AED', fontWeight: 600, marginTop: 1 }}>NLM MedGen</div>
+                    </div>
+                  </div>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5, margin: '0 0 12px' }}>{item.snippet}</p>
+                  <button
+                    className="btn btn-sm"
+                    style={{ width: '100%', background: 'linear-gradient(135deg,#7C3AED,#4285F4)', color: '#fff', border: 'none', justifyContent: 'center' }}
+                    onClick={() => loadDetail(item.slug, item.name)}
+                    disabled={nlmDetailLoading}
+                  >
+                    <i className="fas fa-search-plus"></i> Load Full Details
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Detail panel */}
+          {nlmDetail && !nlmDetail.loading && !nlmDetail.error && (
+            <NLMDetail detail={nlmDetail} onImport={openImport} onClose={() => setNlmDetail(null)} />
+          )}
+          {nlmDetail?.loading && (
+            <div style={{ textAlign: 'center', padding: 30, color: 'var(--text-muted)' }}>
+              <i className="fas fa-spinner fa-spin fa-2x"></i>
+              <p style={{ marginTop: 12 }}>Loading {nlmDetail.name}...</p>
+            </div>
+          )}
+          {nlmDetail?.error && (
+            <div className="alert alert-danger" style={{ marginTop: 16 }}><i className="fas fa-exclamation-circle"></i> {nlmDetail.error}</div>
+          )}
+        </div>
+      )}
+
+      {/* Add / Edit Modal */}
+      {modal && (
+        <DiseaseModal
+          title={modal.mode === 'edit' ? 'Edit Genetic Disease' : 'Import / Add Genetic Condition'}
+          initial={modal.initial}
+          onSave={handleSave}
+          onClose={() => setModal(null)}
+        />
       )}
     </div>
   );

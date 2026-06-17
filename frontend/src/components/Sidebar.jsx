@@ -51,7 +51,8 @@ const govNav = [
   { to: '/government/dashboard', icon: '📊', label: 'Dashboard' },
   { to: '/government/analytics', icon: '📈', label: 'Analytics' },
   { to: '/government/alerts', icon: '⚠️', label: 'Health Alerts' },
-  { to: '/government/map', icon: '🗺️', label: 'Regional Map' },
+  { to: '/government/map',      icon: '🗺️', label: 'Regional Map' },
+  { to: '/government/regional', icon: '📋', label: 'Regional Analysis' },
 ];
 
 const medicalTeamNav = [

@@ -69,21 +69,41 @@ exports.deleteUser = async (req, res) => {
 
 exports.getDoctors = async (req, res) => {
   try {
+    const { search, verified } = req.query;
     const rows = await prisma.user.findMany({
-      where: { role: 'doctor' },
+      where: {
+        role: 'doctor',
+        ...(search ? { OR: [{ name: { contains: search, mode: 'insensitive' } }, { email: { contains: search, mode: 'insensitive' } }] } : {}),
+        ...(verified === 'true'  ? { doctor: { hcpcVerified: true  } } : {}),
+        ...(verified === 'false' ? { doctor: { hcpcVerified: false } } : {}),
+      },
       include: { doctor: true },
       orderBy: { createdAt: 'desc' },
     });
-    res.json(rows.map(u => ({ id: u.id, name: u.name, email: u.email, status: u.status, createdAt: u.createdAt, ...u.doctor })));
+    // unverified first, then alphabetical
+    const mapped = rows.map(u => ({
+      id: u.id, name: u.name, email: u.email, status: u.status,
+      nhsId: u.nhsId, createdAt: u.createdAt,
+      docId: u.doctor?.id,
+      specialization: u.doctor?.specialization,
+      hospital: u.doctor?.hospital,
+      hcpcNumber: u.doctor?.hcpcNumber,
+      hcpcVerified: u.doctor?.hcpcVerified ?? false,
+      rating: u.doctor?.rating,
+      experienceYears: u.doctor?.experienceYears,
+    }));
+    mapped.sort((a, b) => a.hcpcVerified - b.hcpcVerified || a.name.localeCompare(b.name));
+    res.json(mapped);
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
 exports.verifyDoctor = async (req, res) => {
   try {
     const { hcpc_verified } = req.body;
-    await prisma.doctor.updateMany({ where: { userId: +req.params.id }, data: { hcpcVerified: hcpc_verified } });
-    if (hcpc_verified) await prisma.user.update({ where: { id: +req.params.id }, data: { status: 'active' } });
-    res.json({ message: 'Updated' });
+    const id = +req.params.id;
+    await prisma.doctor.updateMany({ where: { userId: id }, data: { hcpcVerified: hcpc_verified } });
+    await prisma.user.update({ where: { id }, data: { status: hcpc_verified ? 'active' : 'pending' } });
+    res.json({ message: hcpc_verified ? 'Doctor verified.' : 'Access revoked.' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 

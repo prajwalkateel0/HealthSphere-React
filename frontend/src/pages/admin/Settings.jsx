@@ -1,48 +1,259 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../../api/axios';
 
-export default function Settings() {
-  const [settings, setSettings] = useState(null);
-  const [loading, setLoading] = useState(true);
+const EMAIL_TYPES = [
+  { value: 'test',             label: 'Basic Test Email' },
+  { value: 'welcome',          label: 'Patient Welcome' },
+  { value: 'approval_request', label: 'Approval Request (to admin)' },
+  { value: 'approved',         label: 'Account Approved' },
+  { value: 'rejected',         label: 'Account Rejected' },
+  { value: 'appointment',      label: 'Appointment Confirmation' },
+  { value: 'emergency',        label: 'Emergency Alert' },
+  { value: 'prescription',     label: 'Prescription Issued' },
+];
 
-  const load = () => api.get('/admin/settings').then(r => setSettings(r.data)).finally(() => setLoading(false));
-  useEffect(() => { load(); }, []);
+const DB_ICON = {
+  users:           { icon: 'fa-users',         color: '#1565C0' },
+  appointments:    { icon: 'fa-calendar-check', color: '#0891B2' },
+  medical_records: { icon: 'fa-file-medical',   color: '#7C3AED' },
+  allergies:       { icon: 'fa-exclamation-triangle', color: '#D97706' },
+  vaccinations:    { icon: 'fa-syringe',        color: '#16A34A' },
+  prescriptions:   { icon: 'fa-pills',          color: '#DC2626' },
+  diet_logs:       { icon: 'fa-carrot',         color: '#EA580C' },
+  health_metrics:  { icon: 'fa-heartbeat',      color: '#E11D48' },
+  messages:        { icon: 'fa-envelope',       color: '#0891B2' },
+  food_database:   { icon: 'fa-drumstick-bite', color: '#D97706' },
+  genetic_diseases:{ icon: 'fa-dna',            color: '#7C3AED' },
+};
+
+export default function Settings() {
+  const [data,    setData]    = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [dbRefreshing, setDbRefreshing] = useState(false);
+
+  // General settings form
+  const [form,    setForm]    = useState({ appName: '', systemEmail: '', nhsLogin: 'enabled' });
+  const [saved,   setSaved]   = useState(false);
+
+  // Email test
+  const [emailType,   setEmailType]   = useState('test');
+  const [emailTo,     setEmailTo]     = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailResult,  setEmailResult]  = useState(null);
+
+  const load = useCallback(async (dbOnly = false) => {
+    if (dbOnly) setDbRefreshing(true);
+    else setLoading(true);
+    try {
+      const r = await api.get('/admin/settings');
+      setData(r.data);
+      if (!dbOnly) {
+        setForm({ appName: r.data.appName || 'HealthSphere', systemEmail: r.data.systemEmail || '', nhsLogin: 'enabled' });
+      }
+    } finally {
+      setLoading(false);
+      setDbRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const saveSettings = (e) => {
+    e.preventDefault();
+    setSaved(true);
+    setTimeout(() => setSaved(false), 4000);
+  };
+
+  const sendTest = async (e) => {
+    e.preventDefault();
+    setEmailSending(true);
+    setEmailResult(null);
+    try {
+      const body = { type: emailType };
+      if (emailTo.trim()) body.to = emailTo.trim();
+      const r = await api.post('/admin/test-email', body);
+      setEmailResult({ ok: r.data.success !== false, to: r.data.to, msg: r.data.success ? `Test email sent to ${r.data.to}` : 'Email sending failed — check SMTP configuration.' });
+    } catch (err) {
+      setEmailResult({ ok: false, msg: err.response?.data?.error || 'Failed to send test email.' });
+    } finally {
+      setEmailSending(false);
+    }
+  };
 
   if (loading) return <div className="loading"><div className="spinner" /></div>;
 
   return (
-    <div style={{ maxWidth: 700 }}>
-      <div className="card mb-4">
-        <div className="card-header"><span className="card-title">⚙️ General Settings</span></div>
-        <div style={{ padding: 20 }}>
-          <div className="form-group">
-            <label className="form-label">Application Name</label>
-            <input type="text" className="form-control" value={settings.appName} readOnly />
-          </div>
-          <div className="form-group">
-            <label className="form-label">System Email</label>
-            <input type="email" className="form-control" value={settings.systemEmail} readOnly />
-          </div>
-          <div className="form-group">
-            <label className="form-label">NHS Login Integration</label>
-            <select className="form-control" disabled defaultValue="enabled">
-              <option value="enabled">Enabled</option>
-              <option value="disabled">Disabled</option>
-            </select>
-          </div>
+    <div>
+      {/* Page header */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--primary)' }}>
+          <i className="fas fa-cog" style={{ color: '#1565C0', marginRight: 8 }}></i>System Settings
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+          HealthSphere administration &amp; configuration
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-header"><span className="card-title">🗄️ Database Status</span></div>
-        <div style={{ padding: 20, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 13 }}>
-          {Object.entries(settings.tables).map(([table, count]) => (
-            <div key={table} style={{ background: 'var(--bg)', padding: '10px 14px', borderRadius: 8, display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontFamily: 'monospace' }}>{table}</span>
-              <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{Number(count).toLocaleString()} rows</span>
-            </div>
-          ))}
+      <div style={{ maxWidth: 700 }}>
+
+        {/* ─── GENERAL SETTINGS ─── */}
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card-header">
+            <h3><i className="fas fa-cog" style={{ marginRight: 6, color: '#1565C0' }}></i>General Settings</h3>
+          </div>
+          <div className="card-body">
+            {saved && (
+              <div className="alert alert-success" style={{ marginBottom: 16 }}>
+                <i className="fas fa-check-circle"></i> Settings saved successfully.
+              </div>
+            )}
+            <form onSubmit={saveSettings}>
+              <div className="form-group">
+                <label className="form-label">Application Name</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={form.appName}
+                  onChange={e => setForm(p => ({ ...p, appName: e.target.value }))}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">System Email</label>
+                <input
+                  type="email"
+                  className="form-control"
+                  value={form.systemEmail}
+                  onChange={e => setForm(p => ({ ...p, systemEmail: e.target.value }))}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">NHS Login Integration</label>
+                <select
+                  className="form-control"
+                  value={form.nhsLogin}
+                  onChange={e => setForm(p => ({ ...p, nhsLogin: e.target.value }))}
+                >
+                  <option value="enabled">Enabled</option>
+                  <option value="disabled">Disabled</option>
+                </select>
+              </div>
+              <button type="submit" className="btn btn-primary">
+                <i className="fas fa-save" style={{ marginRight: 6 }}></i>Save Settings
+              </button>
+            </form>
+          </div>
         </div>
+
+        {/* ─── DATABASE STATUS ─── */}
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card-header">
+            <h3><i className="fas fa-database" style={{ marginRight: 6, color: '#1565C0' }}></i>Database Status</h3>
+            <button
+              className="btn btn-sm btn-outline"
+              onClick={() => load(true)}
+              disabled={dbRefreshing}
+              style={{ fontSize: 12 }}
+            >
+              {dbRefreshing
+                ? <><div className="spinner" style={{ width: 12, height: 12, borderWidth: 2, display: 'inline-block', marginRight: 4 }} />Refreshing…</>
+                : <><i className="fas fa-sync-alt" style={{ marginRight: 4 }}></i>Refresh</>}
+            </button>
+          </div>
+          <div className="card-body">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {data?.tables && Object.entries(data.tables).map(([table, count]) => {
+                const meta = DB_ICON[table] || { icon: 'fa-table', color: '#6B7280' };
+                return (
+                  <div key={table} style={{
+                    background: 'var(--bg)',
+                    padding: '10px 14px',
+                    borderRadius: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    border: '1px solid var(--border)',
+                  }}>
+                    <i className={`fas ${meta.icon}`} style={{ color: meta.color, width: 16, textAlign: 'center' }}></i>
+                    <span style={{ fontFamily: 'monospace', fontSize: 12, flex: 1, color: 'var(--primary)' }}>{table}</span>
+                    <span style={{ fontWeight: 700, color: meta.color, fontSize: 13 }}>
+                      {Number(count).toLocaleString()}
+                      <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 11, marginLeft: 3 }}>rows</span>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* ─── EMAIL CONFIGURATION ─── */}
+        <div className="card">
+          <div className="card-header">
+            <h3><i className="fas fa-envelope" style={{ marginRight: 6, color: '#1565C0' }}></i>Email Configuration</h3>
+          </div>
+          <div className="card-body">
+            {/* Config info row */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+              {[
+                { label: 'System Email', value: data?.systemEmail || '—', icon: 'fa-at' },
+                { label: 'App Name',     value: data?.appName || 'HealthSphere', icon: 'fa-tag' },
+              ].map(row => (
+                <div key={row.label} style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 14px', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>
+                    <i className={`fas ${row.icon}`} style={{ marginRight: 5 }}></i>{row.label}
+                  </div>
+                  <div style={{ fontWeight: 600, fontSize: 13, fontFamily: 'monospace' }}>{row.value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Send test email form */}
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: 18 }}>
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 12, color: 'var(--primary)' }}>
+                <i className="fas fa-paper-plane" style={{ marginRight: 6, color: '#1565C0' }}></i>Send Test Email
+              </div>
+
+              {emailResult && (
+                <div className={`alert alert-${emailResult.ok ? 'success' : 'danger'}`} style={{ marginBottom: 14 }}>
+                  <i className={`fas fa-${emailResult.ok ? 'check-circle' : 'exclamation-circle'}`}></i> {emailResult.msg}
+                </div>
+              )}
+
+              <form onSubmit={sendTest}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Email Type</label>
+                    <select
+                      className="form-control"
+                      value={emailType}
+                      onChange={e => { setEmailType(e.target.value); setEmailResult(null); }}
+                    >
+                      {EMAIL_TYPES.map(t => (
+                        <option key={t.value} value={t.value}>{t.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Send To (optional)</label>
+                    <input
+                      type="email"
+                      className="form-control"
+                      placeholder={data?.systemEmail || 'admin@healthsphere.nhs.uk'}
+                      value={emailTo}
+                      onChange={e => { setEmailTo(e.target.value); setEmailResult(null); }}
+                    />
+                  </div>
+                </div>
+                <button type="submit" className="btn btn-primary" disabled={emailSending}>
+                  {emailSending
+                    ? <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2, display: 'inline-block', marginRight: 6 }} />Sending…</>
+                    : <><i className="fas fa-paper-plane" style={{ marginRight: 6 }}></i>Send Test Email</>}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );

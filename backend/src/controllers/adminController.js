@@ -504,6 +504,9 @@ exports.getSettings = async (req, res) => {
     res.json({
       appName: 'HealthSphere',
       systemEmail: mailer.MAIL_ADMIN,
+      smtpHost: mailer.MAIL_HOST,
+      smtpPort: mailer.MAIL_PORT,
+      mailFrom: mailer.MAIL_FROM,
       tables: counts,
     });
   } catch (err) { res.status(500).json({ error: err.message }); }

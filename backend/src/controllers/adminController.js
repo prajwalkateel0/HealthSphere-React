@@ -512,16 +512,19 @@ exports.searchNLM = async (req, res) => {
       const uid = data.result?.uids?.[0];
       if (!uid) return res.json({ error: 'Condition not found' });
       const item = data.result[uid];
-      const defs  = item.definitions?.find(d => d.source === 'MSH') || item.definitions?.[0];
+      const defs  = Array.isArray(item.definitions)
+        ? (item.definitions.find(d => d?.source === 'MSH') || item.definitions[0])
+        : null;
+      const str = (v) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+      const aliases = Array.isArray(item.aliases) ? item.aliases : [];
       return res.json({
-        name:              item.title || '',
+        name:              str(item.title) || '',
         inheritance_label: null,
         genes:             null,
-        synonyms:          item.aliases?.slice(0, 4).join(', ') || null,
-        symptoms:          defs?.definition || item.definition || null,
-        summary:           item.semantic_type || null,
+        synonyms:          aliases.slice(0, 4).map(a => typeof a === 'string' ? a : String(a)).join(', ') || null,
+        symptoms:          str(defs?.definition) || str(item.definition) || null,
         url:               `https://www.ncbi.nlm.nih.gov/medgen/${uid}`,
-        slug:              uid,
+        slug:              String(uid),
       });
     }
 

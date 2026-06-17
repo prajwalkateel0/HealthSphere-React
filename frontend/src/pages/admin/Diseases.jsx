@@ -114,6 +114,9 @@ function DiseaseModal({ initial = EMPTY_FORM, onSave, onClose, title }) {
   );
 }
 
+/* ── Safe renderer: prevents React error #31 (object as child) ─────── */
+const safeStr = (v) => (v == null || typeof v === 'object') ? null : String(v);
+
 /* ── NLM Detail Modal ──────────────────────────────────────────────── */
 function NLMDetailModal({ detail, loading, error, onImport, onClose }) {
   return (
@@ -123,7 +126,7 @@ function NLMDetailModal({ detail, loading, error, onImport, onClose }) {
         <div className="modal-header" style={{ background: 'linear-gradient(135deg,#7C3AED,#4285F4)', borderRadius: '8px 8px 0 0' }}>
           <h3 style={{ color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 18 }}>🧬</span>
-            {loading ? 'Loading details…' : error ? 'Error' : (detail?.name || 'NLM MedGen')}
+            {loading ? 'Loading details…' : error ? 'Error' : (safeStr(detail?.name) || 'NLM MedGen')}
           </h3>
           <button type="button" className="modal-close" style={{ color: '#fff' }} onClick={onClose}>&times;</button>
         </div>
@@ -168,9 +171,9 @@ function NLMDetailModal({ detail, loading, error, onImport, onClose }) {
               {/* Info grid */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 18 }}>
                 {[
-                  { label: 'Inheritance',    value: detail.inheritance_label },
-                  { label: 'Related Genes',  value: detail.genes,   purple: true },
-                  { label: 'Also Known As',  value: detail.synonyms },
+                  { label: 'Inheritance',    value: safeStr(detail.inheritance_label) },
+                  { label: 'Related Genes',  value: safeStr(detail.genes),   purple: true },
+                  { label: 'Also Known As',  value: safeStr(detail.synonyms) },
                 ].map(({ label, value, purple }) => (
                   <div key={label} style={{ background: 'var(--bg)', borderRadius: 10, padding: '12px 14px' }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.4px', marginBottom: 4 }}>
@@ -184,7 +187,7 @@ function NLMDetailModal({ detail, loading, error, onImport, onClose }) {
               </div>
 
               {/* Definition / Symptoms */}
-              {detail.symptoms && (
+              {safeStr(detail.symptoms) && (
                 <div style={{ marginBottom: 16 }}>
                   <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--primary)', marginBottom: 6 }}>
                     <i className="fas fa-stethoscope" style={{ color: '#1565C0', marginRight: 6 }}></i>
@@ -194,7 +197,7 @@ function NLMDetailModal({ detail, loading, error, onImport, onClose }) {
                     fontSize: 13, color: '#374151', lineHeight: 1.7,
                     background: 'var(--bg)', borderRadius: 8, padding: 14, margin: 0,
                   }}>
-                    {detail.symptoms}
+                    {safeStr(detail.symptoms)}
                   </p>
                 </div>
               )}

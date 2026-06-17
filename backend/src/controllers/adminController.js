@@ -317,9 +317,14 @@ exports.getFoodDatabase = async (req, res) => {
   try {
     const { search } = req.query;
     const rows = await prisma.foodDatabase.findMany({
-      where: search ? { name: { contains: search, mode: 'insensitive' } } : {},
+      where: search ? {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { category: { contains: search, mode: 'insensitive' } },
+        ],
+      } : {},
       orderBy: { name: 'asc' },
-      take: 100,
+      take: 200,
     });
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -327,9 +332,27 @@ exports.getFoodDatabase = async (req, res) => {
 
 exports.addFoodItem = async (req, res) => {
   try {
-    const { name, calories, protein, carbs, fat, fiber, allergens, health_rating } = req.body;
+    const {
+      name, category, calories, protein, carbs, sugar, fat, fiber, sodium,
+      allergens, avoid_if, vitamins, portion_size, health_rating,
+    } = req.body;
     const item = await prisma.foodDatabase.create({
-      data: { name, calories: calories ? +calories : null, protein: protein ? +protein : null, carbs: carbs ? +carbs : null, fat: fat ? +fat : null, fiber: fiber ? +fiber : null, allergens, healthRating: health_rating || 'good' },
+      data: {
+        name,
+        category: category || null,
+        calories: calories ? +calories : null,
+        protein: protein ? +protein : null,
+        carbs: carbs ? +carbs : null,
+        sugar: sugar ? +sugar : null,
+        fat: fat ? +fat : null,
+        fiber: fiber ? +fiber : null,
+        sodium: sodium ? +sodium : null,
+        allergens: allergens || null,
+        avoidIf: avoid_if || null,
+        vitamins: vitamins || null,
+        portionSize: portion_size || null,
+        healthRating: health_rating || 'moderate',
+      },
     });
     res.status(201).json(item);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -339,6 +362,43 @@ exports.deleteFoodItem = async (req, res) => {
   try {
     await prisma.foodDatabase.delete({ where: { id: +req.params.id } });
     res.json({ message: 'Deleted' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+exports.searchFoodAPI = async (req, res) => {
+  try {
+    const axios = require('axios');
+    const { q } = req.query;
+    if (!q || q.trim().length < 2) return res.json([]);
+
+    const { data } = await axios.get(
+      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&action=process&json=1&page_size=20&fields=product_name,nutriments,categories_tags,image_url`,
+      { timeout: 12000 }
+    );
+
+    const results = (data.products || [])
+      .filter(p => p.product_name && p.product_name.trim())
+      .slice(0, 12)
+      .map(p => {
+        const n = p.nutriments || {};
+        const kcal = n['energy-kcal_100g'] || Math.round((n['energy_100g'] || 0) / 4.184);
+        const rawCat = (p.categories_tags || []).find(t => t.startsWith('en:')) || '';
+        const category = rawCat.replace(/^en:/, '').replace(/-/g, ' ');
+        return {
+          food_name: p.product_name.trim(),
+          category: category || 'Food',
+          image: p.image_url || null,
+          calories_per_100g: Math.round(kcal) || 0,
+          protein_g: +parseFloat(n.proteins_100g || 0).toFixed(1),
+          carbs_g: +parseFloat(n.carbohydrates_100g || 0).toFixed(1),
+          sugar_g: +parseFloat(n.sugars_100g || 0).toFixed(1),
+          fats_g: +parseFloat(n.fat_100g || 0).toFixed(1),
+          fiber_g: +parseFloat(n.fiber_100g || 0).toFixed(1),
+          sodium_mg: Math.round((n.sodium_100g || 0) * 1000),
+        };
+      });
+
+    res.json(results);
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 

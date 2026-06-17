@@ -641,12 +641,18 @@ model PublicHealthAlert {
 model FoodDatabase {
   id           Int          @id @default(autoincrement())
   name         String       @db.VarChar(255)
+  category     String?      @db.VarChar(100)
   calories     Int?
   protein      Decimal?     @db.Decimal(6, 2)
   carbs        Decimal?     @db.Decimal(6, 2)
+  sugar        Decimal?     @db.Decimal(6, 2)
   fat          Decimal?     @db.Decimal(6, 2)
   fiber        Decimal?     @db.Decimal(6, 2)
+  sodium       Decimal?     @db.Decimal(7, 2)
   allergens    String?
+  avoidIf      String?      @map("avoid_if")
+  vitamins     String?      @map("vitamins_minerals")
+  portionSize  String?      @map("portion_size") @db.VarChar(100)
   healthRating HealthRating @default(moderate) @map("health_rating")
   createdAt    DateTime     @default(now()) @map("created_at")
 

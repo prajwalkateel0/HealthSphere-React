@@ -15,6 +15,7 @@ router.post('/approvals/:id/approve', ctrl.approveUser);
 router.post('/approvals/:id/reject', ctrl.rejectUser);
 router.get('/analytics', ctrl.getAnalytics);
 router.get('/access-logs', ctrl.getAccessLogs);
+router.get('/food-database/search-api', ctrl.searchFoodAPI);
 router.get('/food-database', ctrl.getFoodDatabase);
 router.post('/food-database', ctrl.addFoodItem);
 router.delete('/food-database/:id', ctrl.deleteFoodItem);

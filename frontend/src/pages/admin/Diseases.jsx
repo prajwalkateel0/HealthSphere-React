@@ -94,49 +94,108 @@ function DiseaseModal({ initial = EMPTY_FORM, onSave, onClose, title }) {
   );
 }
 
-/* ── NLM Detail Panel ──────────────────────────────────────────────── */
-function NLMDetail({ detail, onImport, onClose }) {
-  if (!detail) return null;
+/* ── NLM Detail Modal ──────────────────────────────────────────────── */
+function NLMDetailModal({ detail, loading, error, onImport, onClose }) {
   return (
-    <div className="card" style={{ marginTop: 16 }}>
-      <div className="card-header">
-        <h3 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 20 }}>🧬</span> {detail.name}
-          <span className="badge badge-purple" style={{ marginLeft: 4 }}>MedlinePlus Genetics</span>
-        </h3>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {detail.url && <a href={detail.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#1565C0' }}>View on NLM <i className="fas fa-external-link-alt"></i></a>}
-          <button className="modal-close" onClick={onClose}>&times;</button>
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 640, width: '95vw' }}>
+        {/* Header */}
+        <div className="modal-header" style={{ background: 'linear-gradient(135deg,#7C3AED,#4285F4)', borderRadius: '8px 8px 0 0' }}>
+          <h3 style={{ color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 18 }}>🧬</span>
+            {loading ? 'Loading details…' : error ? 'Error' : (detail?.name || 'NLM MedGen')}
+          </h3>
+          <button type="button" className="modal-close" style={{ color: '#fff' }} onClick={onClose}>&times;</button>
         </div>
-      </div>
-      <div className="card-body">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
-          {[
-            { label: 'Inheritance', value: detail.inheritance_label },
-            { label: 'Related Genes', value: detail.genes, purple: true },
-            { label: 'Also Known As', value: detail.synonyms },
-          ].map(({ label, value, purple }) => (
-            <div key={label} style={{ background: 'var(--bg)', borderRadius: 10, padding: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
-              <div style={{ fontWeight: 700, color: purple ? '#7C3AED' : 'var(--primary)', fontSize: 13 }}>{value || '—'}</div>
+
+        <div className="modal-body" style={{ padding: '20px 24px', maxHeight: '65vh', overflowY: 'auto' }}>
+          {/* Loading */}
+          {loading && (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
+              <div className="spinner" style={{ width: 36, height: 36, borderWidth: 3, margin: '0 auto 14px' }} />
+              <p style={{ margin: 0 }}>Fetching from NCBI MedGen…</p>
             </div>
-          ))}
+          )}
+
+          {/* Error */}
+          {error && !loading && (
+            <div className="alert alert-danger">
+              <i className="fas fa-exclamation-circle" style={{ marginRight: 6 }}></i>{error}
+            </div>
+          )}
+
+          {/* Detail */}
+          {detail && !loading && !error && (
+            <>
+              {/* Source badge + NLM link */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                <span style={{ background: '#EDE9FE', color: '#7C3AED', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
+                  NLM MedGen
+                </span>
+                {detail.url && (
+                  <a
+                    href={detail.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: 12, color: '#1565C0', textDecoration: 'none', fontWeight: 500 }}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    View on NCBI <i className="fas fa-external-link-alt" style={{ fontSize: 10 }}></i>
+                  </a>
+                )}
+              </div>
+
+              {/* Info grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 18 }}>
+                {[
+                  { label: 'Inheritance',    value: detail.inheritance_label },
+                  { label: 'Related Genes',  value: detail.genes,   purple: true },
+                  { label: 'Also Known As',  value: detail.synonyms },
+                ].map(({ label, value, purple }) => (
+                  <div key={label} style={{ background: 'var(--bg)', borderRadius: 10, padding: '12px 14px' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.4px', marginBottom: 4 }}>
+                      {label}
+                    </div>
+                    <div style={{ fontWeight: 700, color: purple ? '#7C3AED' : 'var(--primary)', fontSize: 13 }}>
+                      {value || '—'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Definition / Symptoms */}
+              {detail.symptoms && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--primary)', marginBottom: 6 }}>
+                    <i className="fas fa-stethoscope" style={{ color: '#1565C0', marginRight: 6 }}></i>
+                    Definition / Key Symptoms
+                  </div>
+                  <p style={{
+                    fontSize: 13, color: '#374151', lineHeight: 1.7,
+                    background: 'var(--bg)', borderRadius: 8, padding: 14, margin: 0,
+                  }}>
+                    {detail.symptoms}
+                  </p>
+                </div>
+              )}
+            </>
+          )}
         </div>
-        {detail.symptoms && (
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--primary)', marginBottom: 6 }}>
-              <i className="fas fa-stethoscope" style={{ color: '#1565C0', marginRight: 6 }}></i>Key Symptoms / Definition
-            </div>
-            <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, background: 'var(--bg)', borderRadius: 8, padding: 12, margin: 0 }}>{detail.symptoms}</p>
-          </div>
-        )}
-        <button
-          className="btn btn-primary"
-          style={{ background: 'linear-gradient(135deg,#7C3AED,#4285F4)', border: 'none' }}
-          onClick={() => onImport(detail)}
-        >
-          <i className="fas fa-download"></i> Import to Registry
-        </button>
+
+        {/* Footer */}
+        <div className="modal-footer">
+          <button type="button" className="btn btn-outline" onClick={onClose}>Close</button>
+          {detail && !loading && !error && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{ background: 'linear-gradient(135deg,#7C3AED,#4285F4)', border: 'none' }}
+              onClick={() => { onImport(detail); onClose(); }}
+            >
+              <i className="fas fa-download" style={{ marginRight: 6 }}></i>Import to Registry
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -153,12 +212,15 @@ export default function Diseases() {
   const [modal, setModal]       = useState(null); // null | { mode:'add'|'edit', initial }
 
   // NLM state
-  const [nlmQuery, setNlmQuery]   = useState('');
+  const [nlmQuery,   setNlmQuery]   = useState('');
   const [nlmResults, setNlmResults] = useState([]);
-  const [nlmDetail, setNlmDetail]   = useState(null);
   const [nlmLoading, setNlmLoading] = useState(false);
-  const [nlmDetailLoading, setNlmDetailLoading] = useState(false);
-  const [nlmError, setNlmError]     = useState('');
+  const [nlmError,   setNlmError]   = useState('');
+  // NLM detail modal
+  const [nlmModal,        setNlmModal]        = useState(false);
+  const [nlmDetail,       setNlmDetail]       = useState(null);
+  const [nlmDetailLoading,setNlmDetailLoading]= useState(false);
+  const [nlmDetailError,  setNlmDetailError]  = useState('');
 
   const load = useCallback(() => {
     setLoading(true);
@@ -197,13 +259,30 @@ export default function Diseases() {
   };
 
   const loadDetail = async (slug, name) => {
-    setNlmDetail({ name, loading: true }); setNlmDetailLoading(true);
+    // Open modal immediately with loading state
+    setNlmModal(true);
+    setNlmDetail(null);
+    setNlmDetailError('');
+    setNlmDetailLoading(true);
     try {
       const r = await api.get('/admin/diseases/nlm-search', { params: { type: 'detail', slug } });
-      if (r.data.error) setNlmDetail({ name, error: r.data.error });
-      else setNlmDetail(r.data);
-    } catch { setNlmDetail({ name, error: 'Failed to load details.' }); }
-    finally { setNlmDetailLoading(false); }
+      if (r.data?.error) {
+        setNlmDetailError(r.data.error);
+      } else {
+        setNlmDetail(r.data);
+      }
+    } catch (err) {
+      setNlmDetailError(err?.response?.data?.error || 'Failed to load details. Please try again.');
+    } finally {
+      setNlmDetailLoading(false);
+    }
+  };
+
+  const closeNlmModal = () => {
+    setNlmModal(false);
+    setNlmDetail(null);
+    setNlmDetailError('');
+    setNlmDetailLoading(false);
   };
 
   const openImport = (detail) => {
@@ -389,35 +468,34 @@ export default function Diseases() {
                   </div>
                   <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5, margin: '0 0 12px' }}>{item.snippet}</p>
                   <button
+                    type="button"
                     className="btn btn-sm"
                     style={{ width: '100%', background: 'linear-gradient(135deg,#7C3AED,#4285F4)', color: '#fff', border: 'none', justifyContent: 'center' }}
-                    onClick={() => loadDetail(item.slug, item.name)}
-                    disabled={nlmDetailLoading}
+                    onClick={e => { e.preventDefault(); e.stopPropagation(); loadDetail(item.slug, item.name); }}
                   >
-                    <i className="fas fa-search-plus"></i> Load Full Details
+                    <i className="fas fa-search-plus" style={{ marginRight: 6 }}></i>Load Full Details
                   </button>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Detail panel */}
-          {nlmDetail && !nlmDetail.loading && !nlmDetail.error && (
-            <NLMDetail detail={nlmDetail} onImport={openImport} onClose={() => setNlmDetail(null)} />
-          )}
-          {nlmDetail?.loading && (
-            <div style={{ textAlign: 'center', padding: 30, color: 'var(--text-muted)' }}>
-              <i className="fas fa-spinner fa-spin fa-2x"></i>
-              <p style={{ marginTop: 12 }}>Loading {nlmDetail.name}...</p>
-            </div>
-          )}
-          {nlmDetail?.error && (
-            <div className="alert alert-danger" style={{ marginTop: 16 }}><i className="fas fa-exclamation-circle"></i> {nlmDetail.error}</div>
-          )}
+          {/* NLM detail opens in a modal — see below */}
         </div>
       )}
 
-      {/* Add / Edit Modal */}
+      {/* NLM Full Detail Modal */}
+      {nlmModal && (
+        <NLMDetailModal
+          detail={nlmDetail}
+          loading={nlmDetailLoading}
+          error={nlmDetailError}
+          onImport={openImport}
+          onClose={closeNlmModal}
+        />
+      )}
+
+      {/* Add / Edit Disease Modal */}
       {modal && (
         <DiseaseModal
           title={modal.mode === 'edit' ? 'Edit Genetic Disease' : 'Import / Add Genetic Condition'}

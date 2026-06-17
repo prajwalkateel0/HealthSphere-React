@@ -398,34 +398,66 @@ exports.searchFoodAPI = async (req, res) => {
     const { q } = req.query;
     if (!q || q.trim().length < 2) return res.json([]);
 
-    const { data } = await axios.get(
-      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&action=process&json=1&page_size=20&fields=product_name,nutriments,categories_tags,image_url`,
-      { timeout: 12000 }
+    const KEY = process.env.SPOONACULAR_API_KEY;
+    if (!KEY) return res.status(500).json({ error: 'SPOONACULAR_API_KEY not configured on server.' });
+
+    // Step 1: ingredient search
+    const { data: searchData } = await axios.get(
+      'https://api.spoonacular.com/food/ingredients/search',
+      { params: { query: q, number: 12, metaInformation: true, apiKey: KEY }, timeout: 10000 }
     );
 
-    const results = (data.products || [])
-      .filter(p => p.product_name && p.product_name.trim())
-      .slice(0, 12)
-      .map(p => {
-        const n = p.nutriments || {};
-        const kcal = n['energy-kcal_100g'] || Math.round((n['energy_100g'] || 0) / 4.184);
-        const rawCat = (p.categories_tags || []).find(t => t.startsWith('en:')) || '';
-        const category = rawCat.replace(/^en:/, '').replace(/-/g, ' ');
-        return {
-          food_name: p.product_name.trim(),
-          category: category || 'Food',
-          image: p.image_url || null,
-          calories_per_100g: Math.round(kcal) || 0,
-          protein_g: +parseFloat(n.proteins_100g || 0).toFixed(1),
-          carbs_g: +parseFloat(n.carbohydrates_100g || 0).toFixed(1),
-          sugar_g: +parseFloat(n.sugars_100g || 0).toFixed(1),
-          fats_g: +parseFloat(n.fat_100g || 0).toFixed(1),
-          fiber_g: +parseFloat(n.fiber_100g || 0).toFixed(1),
-          sodium_mg: Math.round((n.sodium_100g || 0) * 1000),
-        };
-      });
+    const items = searchData.results || [];
+    if (!items.length) return res.json([]);
 
-    res.json(results);
+    // Step 2: fetch per-100g nutrition for all results in parallel (one call each)
+    function mapAisle(aisle = '') {
+      const a = aisle.toLowerCase();
+      if (/meat|poultry/.test(a))                        return 'Protein Food';
+      if (/seafood|fish/.test(a))                        return 'Protein Food';
+      if (/dairy|cheese|egg/.test(a))                    return 'Dairy';
+      if (/produce|vegetable/.test(a))                   return 'Vegetable';
+      if (/fruit/.test(a))                               return 'Fruit';
+      if (/pasta|rice|cereal|grain|bread|bakery/.test(a))return 'Grain';
+      if (/nut|seed/.test(a))                            return 'Snack/Processed';
+      if (/beverage|drink/.test(a))                      return 'Beverage';
+      if (/sweet|candy|dessert/.test(a))                 return 'Snack/Processed';
+      return 'Other';
+    }
+
+    const nutritionResults = await Promise.allSettled(
+      items.map(item =>
+        axios.get(
+          `https://api.spoonacular.com/food/ingredients/${item.id}/information`,
+          { params: { amount: 100, unit: 'grams', apiKey: KEY }, timeout: 10000 }
+        )
+      )
+    );
+
+    const foods = items.map((item, i) => {
+      const infoRes  = nutritionResults[i];
+      const infoData = infoRes.status === 'fulfilled' ? infoRes.value.data : null;
+      const nutrients = infoData?.nutrition?.nutrients || [];
+      const get = (name) => {
+        const n = nutrients.find(n => n.name.toLowerCase() === name.toLowerCase());
+        return n ? +parseFloat(n.amount).toFixed(1) : 0;
+      };
+      return {
+        spoonacular_id:    item.id,
+        food_name:         item.name.charAt(0).toUpperCase() + item.name.slice(1),
+        category:          mapAisle(item.aisle || ''),
+        image:             `https://spoonacular.com/cdn/ingredients_100x100/${item.image || 'food.jpg'}`,
+        calories_per_100g: Math.round(get('Calories')),
+        protein_g:         get('Protein'),
+        carbs_g:           get('Carbohydrates'),
+        sugar_g:           get('Sugar'),
+        fats_g:            get('Fat'),
+        fiber_g:           get('Fiber'),
+        sodium_mg:         Math.round(get('Sodium')),
+      };
+    });
+
+    res.json(foods);
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 

@@ -55,6 +55,7 @@ app.use('/api/messages', require('./routes/messages'));
 app.use('/api/ai', require('./routes/ai'));
 app.use('/api/government', require('./routes/government'));
 app.use('/api/medical-team', require('./routes/medicalTeam'));
+app.use('/api/bridge', require('./routes/bridge'));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }));
 

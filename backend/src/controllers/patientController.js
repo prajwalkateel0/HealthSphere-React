@@ -806,11 +806,12 @@ exports.getPrescriptionOrders = async (req, res) => {
 
 exports.createPrescriptionPaymentIntent = async (req, res) => {
   try {
+    const patientId = req.user?.id || req.body?.patient_id;
     const paymentIntent = await stripe.paymentIntents.create({
       amount: PRESCRIPTION_FEE_PENCE,
       currency: 'gbp',
       automatic_payment_methods: { enabled: true },
-      metadata: { patient_id: String(req.user.id), type: 'prescription' },
+      metadata: { patient_id: String(patientId || ''), type: 'prescription' },
     });
     res.json({ client_secret: paymentIntent.client_secret });
   } catch (err) { res.status(500).json({ error: err.message }); }

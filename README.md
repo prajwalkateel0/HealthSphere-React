@@ -1,79 +1,86 @@
-# HealthSphere — React + Node.js
+# HealthSphere
 
-A full-stack healthcare management platform with 4 portals and 37 pages.
+**A full-stack healthcare management platform with 4 portals and 37 pages** — patient care, clinical workflows, platform administration, and national population-health analytics, all in one app.
 
 🌐 **Live demo:** https://health-sphere-react.vercel.app
 
+![Login](docs/screenshots/login.png)
+
+## What it does
+
+HealthSphere is a complete healthcare platform spanning four distinct user roles, each with its own purpose-built dashboard:
+
+- **Patients** book appointments, track diet/exercise/vitals, scan food for allergens, sync wearable data, chat with their doctor in real time, and get AI-powered health insights.
+- **Doctors** manage their patient list, review lab results and prescriptions, run their weekly schedule, and respond to health alerts.
+- **Admins** verify doctor credentials (HCPC), manage users and approvals, maintain the food/disease databases, and audit access logs.
+- **Government analysts** view anonymised, population-level health trends, regional risk maps, and policy reports across England & Wales.
+
+## Screenshots
+
+| Patient dashboard (gamified) | Patient health insights |
+|---|---|
+| ![Patient dashboard](docs/screenshots/patient-dashboard.png) | ![Patient insights](docs/screenshots/patient-insights.png) |
+
+| Doctor dashboard | Admin console |
+|---|---|
+| ![Doctor dashboard](docs/screenshots/doctor-dashboard.png) | ![Admin dashboard](docs/screenshots/admin-dashboard.png) |
+
+| Government population-health analytics |
+|---|
+| ![Government dashboard](docs/screenshots/government-dashboard.png) |
+
 ## Tech Stack
 
-**Frontend:** React 19 + Vite + React Router v6 + Chart.js + Socket.io-client + Leaflet  
-**Backend:** Node.js + Express.js + Prisma ORM + JWT + Socket.io  
-**Database:** PostgreSQL
+**Frontend** — React 19 · Vite · React Router v6 · Chart.js · FullCalendar · Leaflet (regional heatmaps + hospital maps) · Stripe.js · Socket.IO Client
 
-## Project Structure
+**Backend** — Node.js · Express · Prisma ORM · PostgreSQL (32 models) · JWT auth · Socket.IO · Stripe
+
+**Integrations** — Google Gemini (AI health assistant + insights) · Spoonacular (food/allergen lookup, with local DB fallback) · Nodemailer (transactional email) · Stripe (payments)
+
+**Deployment** — Frontend on Vercel, backend on Render, database on Neon (serverless Postgres) — both redeploy automatically on push to `master`.
+
+## Architecture
 
 ```
-healthsphere/
-├── backend/          # Node.js + Express API
-│   ├── src/
-│   │   ├── config/   # Database config
-│   │   ├── controllers/  # Business logic
-│   │   ├── middleware/   # Auth middleware
-│   │   └── routes/   # API routes
-│   ├── prisma/       # Prisma schema + migrations
-│   ├── .env.example  # Environment template
-│   └── package.json
-│
-└── frontend/         # React app
-    ├── src/
-    │   ├── api/      # Axios config
-    │   ├── assets/   # CSS design system
-    │   ├── components/  # Shared components (Sidebar, Layout)
-    │   ├── context/  # Auth context
-    │   └── pages/    # 37 pages across 4 portals
-    └── package.json
+                        REACT SPA (Vercel)
+        Patient · Doctor · Admin · Government portals
+        Axios (REST)              Socket.IO (WebSocket)
+                  │                       │
+                        EXPRESS API (Render)
+        JWT auth → role middleware → controllers → Prisma
+        Modules: appointments, records, prescriptions, diet,
+                 messaging, payments (Stripe), alerts, analytics
+                  │                       │
+              PostgreSQL (Neon)      External APIs
+              32 Prisma models       Gemini · Spoonacular · Stripe
 ```
 
-## Setup
+## Getting Started
 
 ### 1. Database
-
 ```bash
 cd backend
 cp .env.example .env
-# Set DATABASE_URL to your PostgreSQL connection string
+# set DATABASE_URL to your PostgreSQL connection string
 npx prisma migrate deploy
 node seed.js   # optional demo data
 ```
 
 ### 2. Backend
-
 ```bash
 cd backend
 npm install
-npm run dev
+npm run dev          # http://localhost:5002
 ```
 
 ### 3. Frontend
-
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev           # http://localhost:5175
 ```
 
-## Deployment (free)
-
-This app is deployed for free using:
-
-- **Frontend** → [Vercel](https://vercel.com) (root directory `frontend`, auto-deploys on push to `master`)
-- **Backend** → [Render](https://render.com) (root directory `backend`, build: `npm install && npm run build`, start: `npm start`, auto-deploys on push to `master`)
-- **Database** → [Neon](https://neon.tech) (free serverless PostgreSQL)
-
-Push to `master` and both Vercel and Render redeploy automatically. Render's build step runs `prisma migrate deploy`, so schema changes are applied automatically too.
-
-## Demo Accounts (password: `password`)
-
+### Demo accounts (password: `password`)
 | Role | Email |
 |------|-------|
 | Patient | emma.patel007@gmail.com |
@@ -84,64 +91,41 @@ Push to `master` and both Vercel and Render redeploy automatically. Render's bui
 ## Portals
 
 ### Patient Portal (14 pages)
-- Dashboard with health score ring
-- Appointments booking
-- Medical records (labs, prescriptions, allergies, vaccinations)
-- Diet tracker with macro tracking + water logging
-- Safe Appetite allergen scanner
-- Health insights with 7-day trend charts
-- Wearable Sync (Google Fit via Google Drive Takeout)
-- Real-time messaging with doctor
-- AI health assistant (Gemini)
-- NHS hospital map
-- Documents, Notifications, Profile
+Dashboard with health score ring · appointment booking · medical records (labs, prescriptions, allergies, vaccinations) · diet tracker with macro + water logging · Safe Appetite allergen scanner · 7-day health insight trends · wearable sync (Google Fit via Drive Takeout) · real-time doctor messaging · AI health assistant (Gemini) · NHS hospital map · documents, notifications, profile.
 
 ### Doctor Portal (9 pages)
-- Dashboard with today's patients + critical alerts
-- Patient management with drill-down
-- Appointment status management
-- Lab results + prescriptions
-- Weekly schedule management
-- Health alerts
-- Real-time messaging
+Dashboard with today's patients + critical alerts · patient management with drill-down · appointment status management · lab results + prescriptions · weekly schedule · health alerts · real-time messaging.
 
 ### Admin Portal (8 pages)
-- Platform statistics dashboard
-- User management (CRUD + status)
-- Doctor HCPC verification
-- Approval queue
-- Analytics charts
-- Access audit logs
-- Food database management
-- Genetic disease registry
+Platform statistics · user management (CRUD + status) · doctor HCPC verification · approval queue · analytics charts · access audit logs · food database management · genetic disease registry.
 
-### Government Portal (4 pages)
-- Population health dashboard (anonymised)
-- Analytics charts
-- Public health alert system
-- UK regional map
+### Government Portal (5 pages)
+Anonymised population health dashboard · analytics charts · public health alert system · UK regional risk map · national disease trend analysis.
 
-## API Keys Required
+## Project Structure
 
-- `GEMINI_API_KEY` — for AI Assistant and health insights
-- `SPOONACULAR_API_KEY` — for food search (optional, falls back to local DB)
-- SMTP credentials — for email notifications
-
-## Environment Variables
-
-```env
-DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
-JWT_SECRET=your_secret_key
-JWT_EXPIRES_IN=7d
-PORT=5002
-CLIENT_URL=http://localhost:5175
-GEMINI_API_KEY=your_key
-SPOONACULAR_API_KEY=your_key
+```
+healthsphere/
+├── backend/
+│   ├── src/
+│   │   ├── config/        # Database config
+│   │   ├── controllers/   # Business logic
+│   │   ├── middleware/    # JWT auth, role guards
+│   │   └── routes/        # API routes
+│   ├── prisma/            # Schema (32 models) + migrations
+│   └── scripts/           # Legacy PHP → Postgres data importer
+└── frontend/
+    ├── src/
+    │   ├── api/           # Axios client
+    │   ├── components/    # Sidebar, Layout, shared UI
+    │   ├── context/       # Auth context
+    │   └── pages/         # 37 pages across 4 portals
 ```
 
-Frontend (`frontend/.env`):
+## Background
 
-```env
-VITE_API_URL=http://localhost:5002/api
-VITE_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
-```
+This started as a PHP application and was rebuilt page-by-page as a React + Express platform — `backend/scripts/import-php-dump.js` migrates the original MySQL dump into the new Postgres schema, preserving all historical patient, doctor, and admin data.
+
+## Author
+
+**Prajwal Kateel** — [GitHub](https://github.com/prajwalkateel0)

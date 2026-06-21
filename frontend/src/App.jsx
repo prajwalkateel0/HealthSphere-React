@@ -57,6 +57,7 @@ import GovAlerts from './pages/government/Alerts';
 import GovMap from './pages/government/Map';
 import GovRegional from './pages/government/Regional';
 import GovReports  from './pages/government/Reports';
+import GovTrends   from './pages/government/Trends';
 
 // Medical Team pages
 import MedicalTeamDashboard from './pages/medical-team/Dashboard';
@@ -145,6 +146,7 @@ function AppRoutes() {
       <Route path="/government/map" element={<ProtectedRoute roles={['government']}><GovMap /></ProtectedRoute>} />
       <Route path="/government/regional" element={<ProtectedRoute roles={['government']}><GovRegional /></ProtectedRoute>} />
       <Route path="/government/reports"  element={<ProtectedRoute roles={['government']}><GovReports  /></ProtectedRoute>} />
+      <Route path="/government/trends"  element={<ProtectedRoute roles={['government']}><GovTrends   /></ProtectedRoute>} />
 
       {/* Medical Team */}
       <Route path="/medical-team/dashboard" element={<ProtectedRoute roles={['pharmacy']}><MedicalTeamDashboard /></ProtectedRoute>} />

@@ -13,6 +13,9 @@ npm-debug.log*
 backend/uploads/*
 !backend/uploads/.gitkeep
 
+# Stray bare-repo artifact (leftover local cruft, not project content)
+HealthSphere-React.git/
+
 # Editor / OS
 .vscode/*
 !.vscode/extensions.json

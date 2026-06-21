@@ -54,6 +54,7 @@ const govNav = [
   { to: '/government/map',      icon: '🗺️', label: 'Regional Map' },
   { to: '/government/regional', icon: '📋', label: 'Regional Analysis' },
   { to: '/government/reports',  icon: '📄', label: 'Reports' },
+  { to: '/government/trends',   icon: '📉', label: 'Trend Analysis' },
 ];
 
 const medicalTeamNav = [

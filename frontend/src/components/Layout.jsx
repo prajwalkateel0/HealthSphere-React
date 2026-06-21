@@ -46,6 +46,7 @@ const pageTitles = {
   '/government/map': ['Regional Map', 'Health by region'],
   '/government/regional': ['Regional Analysis', 'UK regional health breakdown'],
   '/government/reports':  ['Policy Reports', 'DHSC publications & policy briefs'],
+  '/government/trends':   ['Trend Analysis', 'Population health trends · England & Wales · 2025'],
   '/medical-team/dashboard': ['Medical Team Dashboard', 'Medicine dispensing & order management'],
   '/medical-team/medicine-queue': ['Medicine Queue', 'Process and dispatch approved prescription orders'],
   '/medical-team/profile': ['My Profile', 'Medical Team — Pharmacy Staff'],
